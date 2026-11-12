@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Books Catalog | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Library Books</h1>
+            <p class="page-subtitle">View, track, and manage book titles, copies, and inventory.</p>
+        </div>
+        <a href="{% url 'library:book-create' %}" class="btn btn-primary">
+            <span>+</span> Add Book
+        </a>
+    </div>
+
+    {% if books %}
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title &amp; Author</th>
+                        <th>Category</th>
+                        <th>ISBN</th>
+                        <th class="text-center">Available / Total</th>
+                        <th>Published</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'library:book-detail' book.pk %}" class="table-link font-medium">
+                                {{ book.title }}
+                            </a>
+                            <div class="table-subtext">by {{ book.author }}</div>
+                        </td>
+                        <td>
+                            <a href="{% url 'library:category-detail' book.category.pk %}" class="badge badge-info">
+                                {{ book.category.name }}
+                            </a>
+                        </td>
+                        <td class="text-muted font-mono text-sm">{{ book.isbn|default:"—" }}</td>
+                        <td class="text-center">
+                            <span class="badge {% if book.available_copies > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ book.available_copies }} / {{ book.total_copies }}
+                            </span>
+                        </td>
+                        <td class="text-muted text-sm">{{ book.publication_date|date:"Y"|default:"—" }}</td>
+                        <td class="text-right table-actions">
+                            <a href="{% url 'library:book-detail' book.pk %}" class="btn-action btn-action-view" title="View Details">View</a>
+                            <a href="{% url 'library:book-update' book.pk %}" class="btn-action btn-action-edit" title="Edit">Edit</a>
+                            <a href="{% url 'library:book-delete' book.pk %}" class="btn-action btn-action-delete" title="Delete">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card empty-card">
+        <div class="empty-icon">📖</div>
+        <h3>No Books Registered Yet</h3>
+        <p class="text-muted">Start building the library inventory by cataloging your first book.</p>
+        <a href="{% url 'library:book-create' %}" class="btn btn-primary mt-3">+ Add Book</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

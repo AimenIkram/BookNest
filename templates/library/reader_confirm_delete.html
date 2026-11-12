@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Reader: {{ object.full_name }} | BookNest{% endblock %}
+
+{% block content %}
+<div class="container form-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:reader-detail' object.pk %}">&larr; Back to {{ object.full_name }}</a>
+    </div>
+
+    <div class="card confirm-card">
+        <div class="confirm-icon warning-icon">⚠️</div>
+        <h1 class="confirm-title">Remove Reader</h1>
+        <p class="confirm-message">
+            Are you sure you want to remove reader profile <strong>"{{ object.full_name }}"</strong>?
+        </p>
+
+        <div class="confirm-details">
+            <div class="confirm-row">
+                <span class="text-muted">Email:</span>
+                <span>{{ object.email|default:"None" }}</span>
+            </div>
+            <div class="confirm-row">
+                <span class="text-muted">Phone:</span>
+                <span>{{ object.phone|default:"None" }}</span>
+            </div>
+            <div class="confirm-row">
+                <span class="text-muted">Registered:</span>
+                <span>{{ object.created_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions center-actions mt-4">
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <a href="{% url 'library:reader-detail' object.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

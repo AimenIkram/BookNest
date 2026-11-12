@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ reader.full_name }} | Reader Profile | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:reader-list' %}">&larr; Back to Readers</a>
+    </div>
+
+    <div class="page-header mt-2">
+        <div>
+            <div class="badge badge-info mb-1">Reader Profile</div>
+            <h1 class="page-title">{{ reader.full_name }}</h1>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'library:reader-update' reader.pk %}" class="btn btn-secondary">Edit Reader</a>
+            <a href="{% url 'library:reader-delete' reader.pk %}" class="btn btn-danger">Delete</a>
+        </div>
+    </div>
+
+    <div class="card detail-card mb-4">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Full Name</span>
+                <span class="detail-value font-medium">{{ reader.full_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email Address</span>
+                <span class="detail-value font-mono">
+                    {% if reader.email %}
+                    <a href="mailto:{{ reader.email }}" class="table-link">{{ reader.email }}</a>
+                    {% else %}
+                    <span class="text-muted">No email registered</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Phone Number</span>
+                <span class="detail-value">{{ reader.phone|default:"Not specified" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Registration Date</span>
+                <span class="detail-value text-muted">{{ reader.created_at|date:"F d, Y - H:i" }}</span>
+            </div>
+            <div class="detail-item full-width">
+                <span class="detail-label">Residential / Postal Address</span>
+                <p class="detail-value text-body">{{ reader.address|default:"No address on file."|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

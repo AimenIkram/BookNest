@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} | Category Details | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:category-list' %}">&larr; Back to Categories</a>
+    </div>
+
+    <div class="page-header mt-2">
+        <div>
+            <div class="badge badge-info mb-1">Category Details</div>
+            <h1 class="page-title">{{ category.name }}</h1>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'library:category-update' category.pk %}" class="btn btn-secondary">Edit Category</a>
+            <a href="{% url 'library:category-delete' category.pk %}" class="btn btn-danger">Delete</a>
+        </div>
+    </div>
+
+    <div class="card detail-card mb-4">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Category Name</span>
+                <span class="detail-value font-medium">{{ category.name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Total Books in Genre</span>
+                <span class="detail-value font-medium">{{ books.count }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Date Created</span>
+                <span class="detail-value text-muted">{{ category.created_at|date:"F d, Y - H:i" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Last Updated</span>
+                <span class="detail-value text-muted">{{ category.updated_at|date:"F d, Y - H:i" }}</span>
+            </div>
+            <div class="detail-item full-width">
+                <span class="detail-label">Description</span>
+                <p class="detail-value text-body">{{ category.description|default:"No description provided for this category."|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-heading-group">
+        <h2 class="section-title">Books in this Category</h2>
+        <a href="{% url 'library:book-create' %}" class="btn btn-sm btn-outline">+ Add Book</a>
+    </div>
+
+    {% if books %}
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>ISBN</th>
+                        <th class="text-center">Available / Total</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'library:book-detail' book.pk %}" class="table-link font-medium">
+                                {{ book.title }}
+                            </a>
+                        </td>
+                        <td>{{ book.author }}</td>
+                        <td class="text-muted text-sm font-mono">{{ book.isbn|default:"—" }}</td>
+                        <td class="text-center">
+                            <span class="badge {% if book.available_copies > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ book.available_copies }} / {{ book.total_copies }}
+                            </span>
+                        </td>
+                        <td class="text-right table-actions">
+                            <a href="{% url 'library:book-detail' book.pk %}" class="btn-action btn-action-view">View</a>
+                            <a href="{% url 'library:book-update' book.pk %}" class="btn-action btn-action-edit">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card empty-card">
+        <p class="text-muted mb-2">No books have been assigned to this category yet.</p>
+        <a href="{% url 'library:book-create' %}" class="btn btn-outline btn-sm">Add a book to {{ category.name }}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

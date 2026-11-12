@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ book.title }} | Book Details | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:book-list' %}">&larr; Back to Books</a>
+    </div>
+
+    <div class="page-header mt-2">
+        <div>
+            <span class="badge badge-info mb-1">{{ book.category.name }}</span>
+            <h1 class="page-title">{{ book.title }}</h1>
+            <p class="page-subtitle">by {{ book.author }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'library:book-update' book.pk %}" class="btn btn-secondary">Edit Book</a>
+            <a href="{% url 'library:book-delete' book.pk %}" class="btn btn-danger">Delete</a>
+        </div>
+    </div>
+
+    <div class="card detail-card mb-4">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Title</span>
+                <span class="detail-value font-medium">{{ book.title }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Author</span>
+                <span class="detail-value">{{ book.author }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Category / Genre</span>
+                <span class="detail-value">
+                    <a href="{% url 'library:category-detail' book.category.pk %}" class="table-link">
+                        {{ book.category.name }}
+                    </a>
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">ISBN</span>
+                <span class="detail-value font-mono">{{ book.isbn|default:"Not specified" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Inventory Status</span>
+                <span class="detail-value">
+                    <span class="badge {% if book.available_copies > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                        {{ book.available_copies }} Available / {{ book.total_copies }} Total
+                    </span>
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Publication Date</span>
+                <span class="detail-value">{{ book.publication_date|date:"F d, Y"|default:"Not specified" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Date Cataloged</span>
+                <span class="detail-value text-muted">{{ book.created_at|date:"M d, Y - H:i" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Last Updated</span>
+                <span class="detail-value text-muted">{{ book.updated_at|date:"M d, Y - H:i" }}</span>
+            </div>
+            <div class="detail-item full-width">
+                <span class="detail-label">Synopsis / Description</span>
+                <p class="detail-value text-body">{{ book.description|default:"No synopsis available for this title."|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

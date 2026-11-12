@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Categories | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Book Categories</h1>
+            <p class="page-subtitle">Manage genres and classifications for organizing the library catalog.</p>
+        </div>
+        <a href="{% url 'library:category-create' %}" class="btn btn-primary">
+            <span>+</span> Add Category
+        </a>
+    </div>
+
+    {% if categories %}
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Category Name</th>
+                        <th>Description</th>
+                        <th class="text-center">Associated Books</th>
+                        <th>Created</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'library:category-detail' category.pk %}" class="table-link font-medium">
+                                {{ category.name }}
+                            </a>
+                        </td>
+                        <td class="text-muted">
+                            {{ category.description|default:"—"|truncatechars:70 }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-neutral">{{ category.books.count }}</span>
+                        </td>
+                        <td class="text-muted text-sm">
+                            {{ category.created_at|date:"M d, Y" }}
+                        </td>
+                        <td class="text-right table-actions">
+                            <a href="{% url 'library:category-detail' category.pk %}" class="btn-action btn-action-view" title="View Details">View</a>
+                            <a href="{% url 'library:category-update' category.pk %}" class="btn-action btn-action-edit" title="Edit">Edit</a>
+                            <a href="{% url 'library:category-delete' category.pk %}" class="btn-action btn-action-delete" title="Delete">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card empty-card">
+        <div class="empty-icon">📁</div>
+        <h3>No Categories Registered Yet</h3>
+        <p class="text-muted">Create your first category to start organizing books in the library.</p>
+        <a href="{% url 'library:category-create' %}" class="btn btn-primary mt-3">+ Add Category</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

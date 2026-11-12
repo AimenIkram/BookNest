@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Readers Registry | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Library Readers</h1>
+            <p class="page-subtitle">Manage registered library members and contact details.</p>
+        </div>
+        <a href="{% url 'library:reader-create' %}" class="btn btn-primary">
+            <span>+</span> Register Reader
+        </a>
+    </div>
+
+    {% if readers %}
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Email Address</th>
+                        <th>Phone</th>
+                        <th>Registered Date</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reader in readers %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'library:reader-detail' reader.pk %}" class="table-link font-medium">
+                                {{ reader.full_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if reader.email %}
+                            <a href="mailto:{{ reader.email }}" class="table-link text-muted">{{ reader.email }}</a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ reader.phone|default:"—" }}</td>
+                        <td class="text-muted text-sm">{{ reader.created_at|date:"M d, Y" }}</td>
+                        <td class="text-right table-actions">
+                            <a href="{% url 'library:reader-detail' reader.pk %}" class="btn-action btn-action-view" title="View Details">View</a>
+                            <a href="{% url 'library:reader-update' reader.pk %}" class="btn-action btn-action-edit" title="Edit">Edit</a>
+                            <a href="{% url 'library:reader-delete' reader.pk %}" class="btn-action btn-action-delete" title="Delete">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card empty-card">
+        <div class="empty-icon">👥</div>
+        <h3>No Readers Registered Yet</h3>
+        <p class="text-muted">Register library patrons to manage membership records.</p>
+        <a href="{% url 'library:reader-create' %}" class="btn btn-primary mt-3">+ Register Reader</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

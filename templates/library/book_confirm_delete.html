@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Book: {{ object.title }} | BookNest{% endblock %}
+
+{% block content %}
+<div class="container form-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:book-detail' object.pk %}">&larr; Back to {{ object.title }}</a>
+    </div>
+
+    <div class="card confirm-card">
+        <div class="confirm-icon warning-icon">⚠️</div>
+        <h1 class="confirm-title">Delete Book</h1>
+        <p class="confirm-message">
+            Are you sure you want to delete <strong>"{{ object.title }}"</strong> by {{ object.author }}?
+        </p>
+
+        <div class="confirm-details">
+            <div class="confirm-row">
+                <span class="text-muted">Category:</span>
+                <span>{{ object.category.name }}</span>
+            </div>
+            <div class="confirm-row">
+                <span class="text-muted">ISBN:</span>
+                <span class="font-mono">{{ object.isbn|default:"None" }}</span>
+            </div>
+            <div class="confirm-row">
+                <span class="text-muted">Copies:</span>
+                <span>{{ object.available_copies }} available / {{ object.total_copies }} total</span>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions center-actions mt-4">
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <a href="{% url 'library:book-detail' object.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

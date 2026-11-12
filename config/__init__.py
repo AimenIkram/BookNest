@@ -1,0 +1,3 @@
+"""
+BookNest configuration package.
+"""

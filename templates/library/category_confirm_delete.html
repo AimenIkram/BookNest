@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Category: {{ object.name }} | BookNest{% endblock %}
+
+{% block content %}
+<div class="container form-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:category-detail' object.pk %}">&larr; Back to {{ object.name }}</a>
+    </div>
+
+    <div class="card confirm-card">
+        <div class="confirm-icon warning-icon">⚠️</div>
+        <h1 class="confirm-title">Delete Category</h1>
+        <p class="confirm-message">
+            Are you sure you want to permanently delete category <strong>"{{ object.name }}"</strong>?
+        </p>
+
+        {% if object.books.exists %}
+        <div class="alert alert-error text-left mb-3">
+            <strong>Warning: Protected Record!</strong><br>
+            This category currently contains <strong>{{ object.books.count }}</strong> associated book{{ object.books.count|pluralize }}.
+            Due to data integrity rules, deleting this category will be blocked unless all associated books are reassigned or removed first.
+        </div>
+        {% endif %}
+
+        <div class="confirm-details">
+            <div class="confirm-row">
+                <span class="text-muted">Total Books:</span>
+                <span class="font-medium">{{ object.books.count }}</span>
+            </div>
+            <div class="confirm-row">
+                <span class="text-muted">Created:</span>
+                <span>{{ object.created_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions center-actions mt-4">
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <a href="{% url 'library:category-detail' object.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
