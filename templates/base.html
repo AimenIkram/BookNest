@@ -6,50 +6,226 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{% block title %}BookNest — Book Management System{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}?v=2.1">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <header class="navbar">
-        <div class="container nav-container">
-            <a href="{% url 'core:home' %}" class="brand">
-                <span class="brand-icon">📚</span>
-                <span class="brand-name">Book<span class="brand-accent">Nest</span></span>
-            </a>
-            <nav class="nav-links">
-                <a href="{% url 'core:home' %}" class="nav-link">Home</a>
-                <a href="{% url 'library:book-list' %}" class="nav-link">Books</a>
-                <a href="{% url 'library:category-list' %}" class="nav-link">Categories</a>
-                <a href="{% url 'library:reader-list' %}" class="nav-link">Readers</a>
-                <span class="badge badge-phase">Phase 05</span>
-            </nav>
-        </div>
-    </header>
+<body class="app-body {% if not user.is_authenticated %}auth-body-layout{% endif %}">
+    {% if user.is_authenticated %}
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    {% if messages %}
-    <div class="container messages-container">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            <span class="alert-icon">
-                {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}⚠️{% else %}ℹ{% endif %}
-            </span>
-            <span class="alert-text">{{ message }}</span>
+    <div class="app-layout">
+        <!-- Sidebar Navigation (Desktop Fixed, Mobile Drawer) -->
+        <aside class="app-sidebar" id="appSidebar">
+            <div class="sidebar-brand-wrapper">
+                <a href="{% url 'core:home' %}" class="brand">
+                    <span class="brand-icon">📚</span>
+                    <span class="brand-name">Book<span class="brand-accent">Nest</span></span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Core Management</div>
+                <a href="{% url 'core:home' %}" class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                    <span class="sidebar-icon">📊</span>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="{% url 'library:book-list' %}" class="sidebar-link {% if 'book' in request.resolver_match.url_name and request.resolver_match.url_name != 'book-create' %}active{% endif %}">
+                    <span class="sidebar-icon">📖</span>
+                    <span class="sidebar-text">Books Catalog</span>
+                </a>
+                <a href="{% url 'library:category-list' %}" class="sidebar-link {% if 'category' in request.resolver_match.url_name and request.resolver_match.url_name != 'category-create' %}active{% endif %}">
+                    <span class="sidebar-icon">📁</span>
+                    <span class="sidebar-text">Categories</span>
+                </a>
+                <a href="{% url 'library:reader-list' %}" class="sidebar-link {% if 'reader' in request.resolver_match.url_name and request.resolver_match.url_name != 'reader-create' %}active{% endif %}">
+                    <span class="sidebar-icon">👥</span>
+                    <span class="sidebar-text">Patron Readers</span>
+                </a>
+
+                <div class="nav-section-title mt-3">Circulation</div>
+                <a href="{% url 'library:borrow-list' %}" class="sidebar-link {% if 'borrow' in request.resolver_match.url_name and request.resolver_match.url_name != 'borrow-issue' %}active{% endif %}">
+                    <span class="sidebar-icon">🔄</span>
+                    <span class="sidebar-text">Borrowing Loans</span>
+                </a>
+                {% if user.is_staff %}
+                <a href="{% url 'library:borrow-issue' %}" class="sidebar-link {% if request.resolver_match.url_name == 'borrow-issue' %}active{% endif %}">
+                    <span class="sidebar-icon">⚡</span>
+                    <span class="sidebar-text">Issue a Book</span>
+                </a>
+                {% endif %}
+
+                {% if user.is_staff %}
+                <div class="nav-section-title mt-3">System &amp; Inventory</div>
+                <a href="{% url 'library:book-create' %}" class="sidebar-link {% if request.resolver_match.url_name == 'book-create' %}active{% endif %}">
+                    <span class="sidebar-icon">➕</span>
+                    <span class="sidebar-text">Add New Book</span>
+                </a>
+                <a href="{% url 'library:reader-create' %}" class="sidebar-link {% if request.resolver_match.url_name == 'reader-create' %}active{% endif %}">
+                    <span class="sidebar-icon">👤</span>
+                    <span class="sidebar-text">Register Reader</span>
+                </a>
+                <a href="{% url 'admin:index' %}" class="sidebar-link" target="_blank" rel="noopener">
+                    <span class="sidebar-icon">⚙️</span>
+                    <span class="sidebar-text">Django Admin</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-status-box">
+                    <div class="status-text-group">
+                        <span class="status-title">BookNest Library System</span>
+                        <span class="status-state">Django 6.0 &bull; MySQL 8.0</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Wrapper -->
+        <div class="app-main">
+            <!-- App Topbar -->
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle navigation menu">
+                        <span class="toggle-bar"></span>
+                        <span class="toggle-bar"></span>
+                        <span class="toggle-bar"></span>
+                    </button>
+                    <div class="topbar-title-group">
+                        <span class="topbar-crumb">BookNest</span>
+                        <span class="topbar-sep">/</span>
+                        <h2 class="topbar-current">{% block topbar_title %}Library System{% endblock %}</h2>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    {% if user.is_staff %}
+                    <div class="topbar-actions">
+                        <a href="{% url 'library:borrow-issue' %}" class="btn btn-primary btn-sm">+ Issue</a>
+                        <a href="{% url 'library:book-create' %}" class="btn btn-outline btn-sm">+ Add Book</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- User Account & Session Info -->
+                    <div class="user-session-bar">
+                        <div class="user-profile-badge">
+                            <span class="user-avatar-icon">👤</span>
+                            <span class="user-display-name"><strong>{{ user.get_full_name|default:user.username }}</strong></span>
+                            {% if user.is_superuser %}
+                            <span class="badge badge-admin">Superuser</span>
+                            {% elif user.is_staff %}
+                            <span class="badge badge-staff">Staff</span>
+                            {% else %}
+                            <span class="badge badge-patron">Patron</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- CSRF-Protected POST Logout Form -->
+                        <form method="post" action="{% url 'core:logout' %}" class="logout-form-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger logout-btn" title="Sign out of BookNest">
+                                Sign Out
+                            </button>
+                        </form>
+                    </div>
+
+                    <span class="badge badge-phase">Phase 10</span>
+                </div>
+            </header>
+
+            <!-- Flash Messages Notification Container -->
+            {% if messages %}
+            <div class="container messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <span class="alert-icon">
+                        {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}⚠️{% else %}ℹ{% endif %}
+                    </span>
+                    <span class="alert-text">{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Main Page Content Body -->
+            <main class="page-content-wrapper">
+                {% block content %}
+                {% endblock %}
+            </main>
+
+            <!-- App Footer -->
+            <footer class="footer">
+                <div class="container footer-content">
+                    <p>&copy; 2026 BookNest Management System. Built with Python &amp; Django.</p>
+                    <p class="text-muted">Modular Domain Architecture &bull; Native MySQL 8.0 &bull; Enterprise Ready</p>
+                </div>
+            </footer>
         </div>
-        {% endfor %}
+    </div>
+
+    <!-- Vanilla JavaScript for Mobile Sidebar Interaction -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var toggleBtn = document.getElementById('sidebarToggle');
+            var sidebar = document.getElementById('appSidebar');
+            var backdrop = document.getElementById('sidebarBackdrop');
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('sidebar-open');
+                backdrop.classList.toggle('active');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('sidebar-open');
+                backdrop.classList.remove('active');
+            }
+
+            if (toggleBtn && sidebar && backdrop) {
+                toggleBtn.addEventListener('click', toggleSidebar);
+                backdrop.addEventListener('click', closeSidebar);
+            }
+        });
+    </script>
+
+    {% else %}
+    <!-- Standalone Unauthenticated View (Login Page, etc.) -->
+    <div class="unauth-wrapper">
+        <header class="unauth-header">
+            <div class="container unauth-nav-container">
+                <a href="{% url 'core:login' %}" class="brand">
+                    <span class="brand-icon">📚</span>
+                    <span class="brand-name">Book<span class="brand-accent">Nest</span></span>
+                </a>
+                <span class="badge badge-phase">Phase 10</span>
+            </div>
+        </header>
+
+        {% if messages %}
+        <div class="container messages-container mt-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                <span class="alert-icon">
+                    {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}⚠️{% else %}ℹ{% endif %}
+                </span>
+                <span class="alert-text">{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <main class="unauth-content">
+            {% block auth_content %}{% endblock %}
+        </main>
+
+        <footer class="footer unauth-footer">
+            <div class="container footer-content text-center">
+                <p>&copy; 2026 BookNest Management System. Built with Python &amp; Django.</p>
+                <p class="text-muted text-xs">Session-Based Authentication &bull; Role-Based Access Control</p>
+            </div>
+        </footer>
     </div>
     {% endif %}
-
-    <main class="main-content">
-        {% block content %}
-        {% endblock %}
-    </main>
-
-    <footer class="footer">
-        <div class="container footer-content">
-            <p>&copy; 2026 BookNest. Built with Python &amp; Django.</p>
-            <p class="text-muted">Modular Architecture &bull; Clean Configuration &bull; Production Ready</p>
-        </div>
-    </footer>
 
     {% block extra_js %}{% endblock %}
 </body>

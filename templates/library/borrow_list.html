@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Circulation & Loans | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Circulation &amp; Loans</h1>
+            <p class="page-subtitle">Track book borrowings, process returns, and monitor overdue patron loans.</p>
+        </div>
+        {% if user.is_staff %}
+        <a href="{% url 'library:borrow-issue' %}" class="btn btn-primary">
+            <span>+</span> Issue Book
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="tabs-nav mb-4">
+        <a href="{% url 'library:borrow-list' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="tab-link {% if current_status == 'all' %}active{% endif %}">
+            All Records <span class="tab-count">{{ count_all }}</span>
+        </a>
+        <a href="{% url 'library:borrow-active' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="tab-link {% if current_status == 'active' %}active{% endif %}">
+            Active Loans <span class="tab-count">{{ count_active }}</span>
+        </a>
+        <a href="{% url 'library:borrow-overdue' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="tab-link tab-overdue {% if current_status == 'overdue' %}active{% endif %}">
+            Overdue <span class="tab-count">{{ count_overdue }}</span>
+        </a>
+        <a href="{% url 'library:borrow-returned' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="tab-link {% if current_status == 'returned' %}active{% endif %}">
+            Returned <span class="tab-count">{{ count_returned }}</span>
+        </a>
+    </div>
+
+    <!-- Search Controls -->
+    <div class="card filter-card mb-4">
+        <form method="get" class="filter-form" role="search">
+            {% if current_status != 'all' %}
+            <input type="hidden" name="status" value="{{ current_status }}">
+            {% endif %}
+            <div class="filter-grid" style="grid-template-columns: 1fr auto;">
+                <div class="filter-item">
+                    <label for="borrow-search" class="filter-label">Search Loans</label>
+                    <input
+                        type="text"
+                        id="borrow-search"
+                        name="q"
+                        value="{{ search_query }}"
+                        placeholder="Search reader name, email, book title, ISBN..."
+                        class="form-control"
+                        maxlength="100"
+                    >
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    {% if is_filtered %}
+                    <a href="{% if current_status == 'all' %}{% url 'library:borrow-list' %}{% elif current_status == 'active' %}{% url 'library:borrow-active' %}{% elif current_status == 'overdue' %}{% url 'library:borrow-overdue' %}{% else %}{% url 'library:borrow-returned' %}{% endif %}"
+                       class="btn btn-secondary">
+                        Clear
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Header -->
+    <div class="results-header mb-3">
+        <div class="results-count">
+            {% if paginator.count > 0 %}
+                Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of <strong>{{ paginator.count }}</strong> loan record{{ paginator.count|pluralize }}
+                {% if is_filtered %}
+                <span class="badge badge-info ml-2">Filtered</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if borrow_records %}
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Reader Patron</th>
+                        <th>Book Title</th>
+                        <th>Issue Date</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in borrow_records %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'library:reader-detail' record.reader.pk %}" class="table-link font-medium">
+                                {{ record.reader.full_name }}
+                            </a>
+                            {% if record.reader.email %}
+                            <div class="table-subtext text-muted text-sm">{{ record.reader.email }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'library:book-detail' record.book.pk %}" class="table-link font-medium">
+                                {{ record.book.title }}
+                            </a>
+                            <div class="table-subtext text-muted text-sm">by {{ record.book.author }}</div>
+                        </td>
+                        <td class="text-sm">{{ record.issue_date|date:"M d, Y" }}</td>
+                        <td class="text-sm font-medium {% if record.is_overdue %}text-danger{% endif %}">
+                            {{ record.due_date|date:"M d, Y" }}
+                        </td>
+                        <td>
+                            {% if record.status == 'RETURNED' %}
+                                <span class="badge badge-success">Returned</span>
+                                {% if record.returned_at %}
+                                <div class="table-subtext text-muted text-sm">{{ record.returned_at|date:"M d, Y" }}</div>
+                                {% endif %}
+                            {% elif record.is_overdue %}
+                                <span class="badge badge-danger">Overdue</span>
+                            {% else %}
+                                <span class="badge badge-info">Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right table-actions">
+                            <a href="{% url 'library:borrow-detail' record.pk %}" class="btn-action btn-action-view" title="View Loan Details">
+                                View
+                            </a>
+                            {% if user.is_staff and record.status == 'ACTIVE' %}
+                            <a href="{% url 'library:borrow-return' record.pk %}" class="btn-action btn-action-edit" title="Return Book">
+                                Return
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <div class="pagination-container">
+            <div class="pagination-info text-muted text-sm">
+                Page {{ page_obj.number }} of {{ paginator.num_pages }}
+            </div>
+            <nav class="pagination-nav" aria-label="Borrowing records pagination">
+                <ul class="pagination-list">
+                    {% if page_obj.has_previous %}
+                    <li>
+                        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn-page" aria-label="Previous page">
+                            &larr; Previous
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <span class="btn-page disabled" aria-disabled="true">&larr; Previous</span>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in paginator.page_range %}
+                        {% if page_num == page_obj.number %}
+                        <li>
+                            <span class="btn-page active" aria-current="page">{{ page_num }}</span>
+                        </li>
+                        {% else %}
+                        <li>
+                            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_num }}" class="btn-page">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li>
+                        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn-page" aria-label="Next page">
+                            Next &rarr;
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <span class="btn-page disabled" aria-disabled="true">Next &rarr;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card empty-card">
+        <div class="empty-icon">{% if current_status == 'overdue' %}⏰{% elif current_status == 'returned' %}📦{% elif is_filtered %}🔍{% else %}📑{% endif %}</div>
+        <h3>
+            {% if is_filtered %}
+                No Matching Loan Records Found
+            {% elif current_status == 'active' %}
+                No Active Loans
+            {% elif current_status == 'overdue' %}
+                No Overdue Books
+            {% elif current_status == 'returned' %}
+                No Returned Loans
+            {% else %}
+                No Borrowing Records Yet
+            {% endif %}
+        </h3>
+        <p class="text-muted">
+            {% if is_filtered %}
+                Try adjusting your search query or switching tabs.
+            {% elif current_status == 'overdue' %}
+                All active loans are on schedule. No patrons currently have overdue items.
+            {% else %}
+                Issue a book copy to a registered reader patron to start circulation tracking.
+            {% endif %}
+        </p>
+        <div class="mt-3">
+            {% if is_filtered %}
+            <a href="{% url 'library:borrow-list' %}" class="btn btn-secondary">Clear Filters</a>
+            {% endif %}
+            {% if user.is_staff %}
+            <a href="{% url 'library:borrow-issue' %}" class="btn btn-primary" {% if is_filtered %}style="margin-left: 0.5rem;"{% endif %}>+ Issue Book</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

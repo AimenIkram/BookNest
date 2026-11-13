@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
@@ -132,3 +133,97 @@ class Reader(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.full_name
+
+
+class BorrowRecord(TimeStampedModel):
+    """
+    Represents the circulation loan of a book copy to a registered reader patron.
+    Tracks issuance, due date, return timestamp, and operational status.
+    """
+    STATUS_ACTIVE = "ACTIVE"
+    STATUS_RETURNED = "RETURNED"
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_RETURNED, "Returned"),
+    ]
+
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.PROTECT,
+        related_name="borrow_records",
+        help_text="The book copy being borrowed."
+    )
+    reader = models.ForeignKey(
+        Reader,
+        on_delete=models.PROTECT,
+        related_name="borrow_records",
+        help_text="The reader patron who borrowed the book."
+    )
+    issue_date = models.DateField(
+        default=timezone.localdate,
+        help_text="Date on which the book was issued."
+    )
+    due_date = models.DateField(
+        help_text="Date by which the book must be returned."
+    )
+    returned_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Exact timestamp when the book was returned."
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE,
+        db_index=True,
+        help_text="Current borrowing status (Active or Returned)."
+    )
+
+    class Meta:
+        verbose_name = "Borrow Record"
+        verbose_name_plural = "Borrow Records"
+        ordering = ["-issue_date", "-id"]
+        indexes = [
+            models.Index(fields=["status", "due_date"], name="borrow_status_due_idx"),
+            models.Index(fields=["reader", "status"], name="borrow_reader_status_idx"),
+            models.Index(fields=["book", "status"], name="borrow_book_status_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(due_date__gte=F("issue_date")),
+                name="borrow_due_date_gte_issue_date",
+            )
+        ]
+
+    @property
+    def is_overdue(self) -> bool:
+        """
+        Dynamically calculates whether the borrowing record is currently overdue.
+        Overdue records are active loans whose due_date is earlier than today's date.
+        """
+        return self.status == self.STATUS_ACTIVE and self.due_date < timezone.localdate()
+
+    def clean(self):
+        super().clean()
+        if self.issue_date and self.due_date:
+            if self.due_date < self.issue_date:
+                raise ValidationError({
+                    "due_date": "Due date cannot be earlier than the issue date."
+                })
+
+        # Prevent duplicate active borrowing for the same reader and book
+        if self.status == self.STATUS_ACTIVE and self.book_id and self.reader_id:
+            qs = BorrowRecord.objects.filter(
+                reader_id=self.reader_id,
+                book_id=self.book_id,
+                status=self.STATUS_ACTIVE,
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    "This reader already has an active borrowing record for this book."
+                )
+
+    def __str__(self) -> str:
+        return f"'{self.book.title}' borrowed by {self.reader.full_name} [{self.status}]"

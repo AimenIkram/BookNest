@@ -13,10 +13,12 @@
             <div class="badge badge-info mb-1">Reader Profile</div>
             <h1 class="page-title">{{ reader.full_name }}</h1>
         </div>
+        {% if user.is_staff %}
         <div class="header-actions">
             <a href="{% url 'library:reader-update' reader.pk %}" class="btn btn-secondary">Edit Reader</a>
             <a href="{% url 'library:reader-delete' reader.pk %}" class="btn btn-danger">Delete</a>
         </div>
+        {% endif %}
     </div>
 
     <div class="card detail-card mb-4">

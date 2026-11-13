@@ -14,10 +14,12 @@
             <h1 class="page-title">{{ book.title }}</h1>
             <p class="page-subtitle">by {{ book.author }}</p>
         </div>
+        {% if user.is_staff %}
         <div class="header-actions">
             <a href="{% url 'library:book-update' book.pk %}" class="btn btn-secondary">Edit Book</a>
             <a href="{% url 'library:book-delete' book.pk %}" class="btn btn-danger">Delete</a>
         </div>
+        {% endif %}
     </div>
 
     <div class="card detail-card mb-4">

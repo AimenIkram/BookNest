@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
-from .models import Book, Category, Reader
+from .models import Book, BorrowRecord, Category, Reader
 from .validators import (
     normalize_isbn,
     validate_isbn,
@@ -234,3 +237,63 @@ class ReaderForm(forms.ModelForm):
 
     def clean_address(self):
         return self.cleaned_data.get('address', '').strip()
+
+
+class BorrowIssueForm(forms.Form):
+    """
+    Form for issuing an available book copy to a registered reader.
+    Filters book choices to available titles only, defaults due date to 14 days,
+    and validates availability and active loan constraints.
+    """
+    reader = forms.ModelChoiceField(
+        queryset=Reader.objects.all().order_by('full_name'),
+        empty_label="Select a Reader...",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Registered patron borrowing the book."
+    )
+    book = forms.ModelChoiceField(
+        queryset=Book.objects.filter(available_copies__gt=0).select_related('category').order_by('title'),
+        empty_label="Select an Available Book...",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Available book titles currently on shelves."
+    )
+    due_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+        }),
+        help_text="Expected return date (defaults to 14 days from today)."
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields['due_date'].initial = timezone.localdate() + timedelta(days=14)
+
+    def clean_due_date(self):
+        due_date = self.cleaned_data.get('due_date')
+        if due_date:
+            if due_date < timezone.localdate():
+                raise ValidationError("Due date cannot be set in the past.")
+        return due_date
+
+    def clean(self):
+        cleaned_data = super().clean()
+        reader = cleaned_data.get('reader')
+        book = cleaned_data.get('book')
+
+        if reader and book:
+            # Check availability
+            if book.available_copies <= 0:
+                self.add_error('book', f"'{book.title}' is currently out of stock.")
+
+            # Check if reader already has an active loan for this book
+            if BorrowRecord.objects.filter(
+                reader=reader, book=book, status=BorrowRecord.STATUS_ACTIVE
+            ).exists():
+                self.add_error(
+                    'book',
+                    f"Reader '{reader.full_name}' already has an active loan for '{book.title}'."
+                )
+
+        return cleaned_data

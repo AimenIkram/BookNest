@@ -24,4 +24,13 @@ urlpatterns = [
     path('readers/<int:pk>/', views.ReaderDetailView.as_view(), name='reader-detail'),
     path('readers/<int:pk>/edit/', views.ReaderUpdateView.as_view(), name='reader-update'),
     path('readers/<int:pk>/delete/', views.ReaderDeleteView.as_view(), name='reader-delete'),
+
+    # Borrowing & Circulation URLs
+    path('borrow/', views.BorrowRecordListView.as_view(), name='borrow-list'),
+    path('borrow/active/', views.BorrowRecordListView.as_view(), {'default_status': 'active'}, name='borrow-active'),
+    path('borrow/returned/', views.BorrowRecordListView.as_view(), {'default_status': 'returned'}, name='borrow-returned'),
+    path('borrow/overdue/', views.BorrowRecordListView.as_view(), {'default_status': 'overdue'}, name='borrow-overdue'),
+    path('borrow/issue/', views.BorrowRecordIssueView.as_view(), name='borrow-issue'),
+    path('borrow/<int:pk>/', views.BorrowRecordDetailView.as_view(), name='borrow-detail'),
+    path('borrow/<int:pk>/return/', views.BorrowRecordReturnView.as_view(), name='borrow-return'),
 ]

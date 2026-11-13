@@ -9,9 +9,11 @@
             <h1 class="page-title">Book Categories</h1>
             <p class="page-subtitle">Manage genres and classifications for organizing the library catalog.</p>
         </div>
+        {% if user.is_staff %}
         <a href="{% url 'library:category-create' %}" class="btn btn-primary">
             <span>+</span> Add Category
         </a>
+        {% endif %}
     </div>
 
     {% if categories %}
@@ -46,8 +48,10 @@
                         </td>
                         <td class="text-right table-actions">
                             <a href="{% url 'library:category-detail' category.pk %}" class="btn-action btn-action-view" title="View Details">View</a>
+                            {% if user.is_staff %}
                             <a href="{% url 'library:category-update' category.pk %}" class="btn-action btn-action-edit" title="Edit">Edit</a>
                             <a href="{% url 'library:category-delete' category.pk %}" class="btn-action btn-action-delete" title="Delete">Delete</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -60,7 +64,9 @@
         <div class="empty-icon">📁</div>
         <h3>No Categories Registered Yet</h3>
         <p class="text-muted">Create your first category to start organizing books in the library.</p>
+        {% if user.is_staff %}
         <a href="{% url 'library:category-create' %}" class="btn btn-primary mt-3">+ Add Category</a>
+        {% endif %}
     </div>
     {% endif %}
 </div>

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Loan Details: {{ record.book.title }} | BookNest{% endblock %}
+
+{% block content %}
+<div class="container section-container">
+    <div class="breadcrumb">
+        <a href="{% url 'library:borrow-list' %}">&larr; Back to Circulation Loans</a>
+    </div>
+
+    <div class="detail-header card mb-4">
+        <div class="detail-main">
+            <div class="detail-meta">
+                <span class="detail-label">Circulation Loan #{{ record.pk }}</span>
+                {% if record.status == 'RETURNED' %}
+                    <span class="badge badge-success">Returned</span>
+                {% elif record.is_overdue %}
+                    <span class="badge badge-danger">Overdue Loan</span>
+                {% else %}
+                    <span class="badge badge-info">Active Loan</span>
+                {% endif %}
+            </div>
+            <h1 class="page-title mt-1">{{ record.book.title }}</h1>
+            <p class="text-muted">Issued to <strong>{{ record.reader.full_name }}</strong> on {{ record.issue_date|date:"F d, Y" }}</p>
+        </div>
+
+        <div class="detail-actions">
+            {% if user.is_staff and record.status == 'ACTIVE' %}
+            <a href="{% url 'library:borrow-return' record.pk %}" class="btn btn-primary">
+                Return Book
+            </a>
+            {% endif %}
+            <a href="{% url 'library:borrow-list' %}" class="btn btn-secondary">
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="grid detail-grid-2col">
+        <!-- Loan Timeline & Status Card -->
+        <div class="card detail-card">
+            <h3 class="detail-section-title">Loan Timeline</h3>
+            <div class="attribute-list">
+                <div class="attribute-item">
+                    <span class="attribute-label">Current Status</span>
+                    <span class="attribute-value">
+                        {% if record.status == 'RETURNED' %}
+                            <span class="badge badge-success">Returned</span>
+                        {% elif record.is_overdue %}
+                            <span class="badge badge-danger">Overdue</span>
+                        {% else %}
+                            <span class="badge badge-info">Active Loan</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Date Issued</span>
+                    <span class="attribute-value">{{ record.issue_date|date:"F d, Y" }}</span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Due Date</span>
+                    <span class="attribute-value font-medium {% if record.is_overdue %}text-danger{% endif %}">
+                        {{ record.due_date|date:"F d, Y" }}
+                        {% if record.is_overdue %}
+                        <span class="text-sm font-normal text-danger">(Past due date)</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% if record.returned_at %}
+                <div class="attribute-item">
+                    <span class="attribute-label">Returned At</span>
+                    <span class="attribute-value font-medium text-success">
+                        {{ record.returned_at|date:"F d, Y — H:i" }}
+                    </span>
+                </div>
+                {% endif %}
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Record Created</span>
+                    <span class="attribute-value text-muted text-sm">{{ record.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Book & Reader Summary Card -->
+        <div class="card detail-card">
+            <h3 class="detail-section-title">Book &amp; Patron Details</h3>
+            <div class="attribute-list">
+                <div class="attribute-item">
+                    <span class="attribute-label">Book Title</span>
+                    <span class="attribute-value">
+                        <a href="{% url 'library:book-detail' record.book.pk %}" class="table-link">
+                            {{ record.book.title }}
+                        </a>
+                    </span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Author</span>
+                    <span class="attribute-value">{{ record.book.author }}</span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Category</span>
+                    <span class="attribute-value">
+                        <a href="{% url 'library:category-detail' record.book.category.pk %}" class="badge badge-info">
+                            {{ record.book.category.name }}
+                        </a>
+                    </span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">ISBN</span>
+                    <span class="attribute-value font-mono text-sm">{{ record.book.isbn|default:"—" }}</span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Patron Reader</span>
+                    <span class="attribute-value">
+                        <a href="{% url 'library:reader-detail' record.reader.pk %}" class="table-link">
+                            {{ record.reader.full_name }}
+                        </a>
+                    </span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Patron Email</span>
+                    <span class="attribute-value text-sm">{{ record.reader.email|default:"None on file" }}</span>
+                </div>
+
+                <div class="attribute-item">
+                    <span class="attribute-label">Patron Phone</span>
+                    <span class="attribute-value text-sm">{{ record.reader.phone|default:"None on file" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

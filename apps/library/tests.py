@@ -1,13 +1,18 @@
 import datetime
+from datetime import timedelta
+
+from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from apps.library.forms import BookForm, CategoryForm, ReaderForm
-from apps.library.models import Book, Category, Reader
+from apps.library.forms import BookForm, BorrowIssueForm, CategoryForm, ReaderForm
+from apps.library.models import Book, BorrowRecord, Category, Reader
+from apps.library.services.borrowing import BorrowingError, issue_book, return_book
 
 
 # ==============================================================================
@@ -450,6 +455,12 @@ class ReaderFormValidationTests(TestCase):
 
 class CategoryCRUDTests(TestCase):
     def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="staff_category",
+            password="password123",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
         self.category = Category.objects.create(
             name="Philosophy",
             description="Works of philosophical inquiry."
@@ -548,6 +559,12 @@ class CategoryCRUDTests(TestCase):
 
 class BookCRUDTests(TestCase):
     def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="staff_book",
+            password="password123",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
         self.category = Category.objects.create(name="Fiction")
         self.book = Book.objects.create(
             title="The Hobbit",
@@ -648,6 +665,12 @@ class BookCRUDTests(TestCase):
 
 class ReaderCRUDTests(TestCase):
     def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="staff_reader",
+            password="password123",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
         self.reader = Reader.objects.create(
             full_name="Alan Turing",
             email="alan@example.com",
@@ -749,6 +772,11 @@ class BookSearchFilterPaginationTests(TestCase):
     on the Book catalog listing page.
     """
     def setUp(self):
+        self.user = User.objects.create_user(
+            username="search_user",
+            password="password123",
+        )
+        self.client.force_login(self.user)
         self.cat_tech = Category.objects.create(name='Technology', description='Tech books')
         self.cat_fiction = Category.objects.create(name='Science Fiction', description='Sci-Fi')
         self.cat_history = Category.objects.create(name='History', description='Historical texts')
@@ -1039,3 +1067,404 @@ class BookSearchFilterPaginationTests(TestCase):
         # Verify pagination link in HTML carries the preserved querystring
         self.assertContains(response, f'q=Tech')
         self.assertContains(response, f'sort=title_asc&page=2')
+
+
+# ==============================================================================
+# Phase 08 Tests: Book Circulation, Issuing, and Returning
+# ==============================================================================
+
+class BorrowRecordModelTests(TestCase):
+    """
+    Unit tests for the BorrowRecord model, integrity constraints, and overdue calculation.
+    """
+    def setUp(self):
+        self.category = Category.objects.create(name="Circulation Category")
+        self.book = Book.objects.create(
+            title="Clean Architecture",
+            author="Robert C. Martin",
+            isbn="9780134494164",
+            category=self.category,
+            total_copies=5,
+            available_copies=5,
+        )
+        self.reader = Reader.objects.create(
+            full_name="Grace Hopper",
+            email="grace.hopper@navy.mil",
+            phone="+1 555-0100",
+        )
+
+    def test_valid_borrow_record_creation(self):
+        issue_date = timezone.localdate()
+        due_date = issue_date + timedelta(days=14)
+        record = BorrowRecord.objects.create(
+            book=self.book,
+            reader=self.reader,
+            issue_date=issue_date,
+            due_date=due_date,
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        self.assertEqual(record.status, BorrowRecord.STATUS_ACTIVE)
+        self.assertEqual(record.issue_date, issue_date)
+        self.assertEqual(record.due_date, due_date)
+        self.assertIsNone(record.returned_at)
+        self.assertFalse(record.is_overdue)
+        self.assertIn("Clean Architecture", str(record))
+        self.assertIn("Grace Hopper", str(record))
+
+    def test_borrow_record_invalid_due_date_clean(self):
+        today = timezone.localdate()
+        record = BorrowRecord(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today,
+            due_date=today - timedelta(days=1),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            record.full_clean()
+        self.assertIn("due_date", ctx.exception.message_dict)
+
+    def test_borrow_record_check_constraint_db(self):
+        today = timezone.localdate()
+        with self.assertRaises(IntegrityError):
+            BorrowRecord.objects.create(
+                book=self.book,
+                reader=self.reader,
+                issue_date=today,
+                due_date=today - timedelta(days=2),
+                status=BorrowRecord.STATUS_ACTIVE,
+            )
+
+    def test_overdue_property_calculation(self):
+        today = timezone.localdate()
+        # 1. Active overdue loan (due yesterday)
+        overdue_record = BorrowRecord.objects.create(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today - timedelta(days=15),
+            due_date=today - timedelta(days=1),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        self.assertTrue(overdue_record.is_overdue)
+
+        # 2. Returned loan (due date was in past, but returned)
+        overdue_record.status = BorrowRecord.STATUS_RETURNED
+        overdue_record.returned_at = timezone.now()
+        overdue_record.save()
+        self.assertFalse(overdue_record.is_overdue)
+
+        # 3. Active future loan (due tomorrow)
+        future_record = BorrowRecord.objects.create(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today,
+            due_date=today + timedelta(days=7),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        self.assertFalse(future_record.is_overdue)
+
+    def test_duplicate_active_borrow_record_prevented(self):
+        today = timezone.localdate()
+        BorrowRecord.objects.create(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today,
+            due_date=today + timedelta(days=14),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        # Attempt to create a second active loan for same reader & book
+        duplicate = BorrowRecord(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today,
+            due_date=today + timedelta(days=14),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            duplicate.full_clean()
+        self.assertIn("active borrowing record", str(ctx.exception))
+
+
+class BorrowingServiceTests(TestCase):
+    """
+    Tests for circulation business logic, inventory tracking, and concurrency safeguards
+    implemented in apps/library/services/borrowing.py.
+    """
+    def setUp(self):
+        self.category = Category.objects.create(name="Circulation Services")
+        self.book = Book.objects.create(
+            title="Design Patterns",
+            author="Gang of Four",
+            isbn="9780201633610",
+            category=self.category,
+            total_copies=2,
+            available_copies=2,
+        )
+        self.reader1 = Reader.objects.create(full_name="Reader One", email="r1@example.com")
+        self.reader2 = Reader.objects.create(full_name="Reader Two", email="r2@example.com")
+
+    def test_issue_book_success(self):
+        record = issue_book(book=self.book, reader=self.reader1)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 1)
+        self.assertEqual(record.status, BorrowRecord.STATUS_ACTIVE)
+        self.assertEqual(record.reader, self.reader1)
+        self.assertEqual(record.book, self.book)
+        self.assertEqual(record.due_date, timezone.localdate() + timedelta(days=14))
+
+    def test_issue_book_unavailable_zero_copies_rejected(self):
+        # Deplete copies to 0
+        self.book.available_copies = 0
+        self.book.save()
+
+        with self.assertRaises(BorrowingError) as ctx:
+            issue_book(book=self.book, reader=self.reader1)
+        self.assertIn("No copies", str(ctx.exception))
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 0)
+
+    def test_issue_book_duplicate_active_loan_rejected(self):
+        issue_book(book=self.book, reader=self.reader1)
+        with self.assertRaises(BorrowingError) as ctx:
+            issue_book(book=self.book, reader=self.reader1)
+        self.assertIn("already has an active loan", str(ctx.exception))
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 1)
+
+    def test_issue_book_multiple_readers_different_copies(self):
+        r1_record = issue_book(book=self.book, reader=self.reader1)
+        r2_record = issue_book(book=self.book, reader=self.reader2)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 0)
+        self.assertNotEqual(r1_record.pk, r2_record.pk)
+
+    def test_issue_book_invalid_reader_or_book(self):
+        with self.assertRaises(BorrowingError):
+            issue_book(book=99999, reader=self.reader1)
+        with self.assertRaises(BorrowingError):
+            issue_book(book=self.book, reader=99999)
+
+    def test_issue_book_past_due_date_rejected(self):
+        today = timezone.localdate()
+        with self.assertRaises(BorrowingError) as ctx:
+            issue_book(book=self.book, reader=self.reader1, due_date=today - timedelta(days=1))
+        self.assertIn("Due date cannot be earlier", str(ctx.exception))
+
+    def test_return_book_success(self):
+        record = issue_book(book=self.book, reader=self.reader1)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 1)
+
+        returned_record = return_book(borrow_record_id=record.pk)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 2)
+        self.assertEqual(returned_record.status, BorrowRecord.STATUS_RETURNED)
+        self.assertIsNotNone(returned_record.returned_at)
+
+    def test_return_book_already_returned_raises_error(self):
+        record = issue_book(book=self.book, reader=self.reader1)
+        return_book(borrow_record_id=record.pk)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 2)
+
+        # Attempt to return again
+        with self.assertRaises(BorrowingError) as ctx:
+            return_book(borrow_record_id=record.pk)
+        self.assertIn("already been marked as returned", str(ctx.exception))
+        self.book.refresh_from_db()
+        # Verify inventory was NOT incremented again past total_copies
+        self.assertEqual(self.book.available_copies, 2)
+
+    def test_return_book_cannot_exceed_total_copies(self):
+        record = issue_book(book=self.book, reader=self.reader1)
+        # Artificially set available_copies to total_copies
+        self.book.available_copies = self.book.total_copies
+        self.book.save()
+
+        with self.assertRaises(BorrowingError) as ctx:
+            return_book(borrow_record_id=record.pk)
+        self.assertIn("already at maximum capacity", str(ctx.exception))
+
+    def test_return_book_invalid_id(self):
+        with self.assertRaises(BorrowingError):
+            return_book(borrow_record_id=99999)
+
+
+class BorrowingViewTests(TestCase):
+    """
+    Tests for circulation views, URL endpoints, forms, and template flows.
+    """
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="staff_borrow",
+            password="password123",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
+        self.category = Category.objects.create(name="View Test Genre")
+        self.book = Book.objects.create(
+            title="Refactoring",
+            author="Martin Fowler",
+            isbn="9780201485677",
+            category=self.category,
+            total_copies=3,
+            available_copies=3,
+        )
+        self.reader = Reader.objects.create(
+            full_name="Ada Lovelace",
+            email="ada@firstprogrammer.org",
+            phone="+44 20 7946 0991",
+        )
+
+    def test_borrow_list_view_get(self):
+        response = self.client.get(reverse('library:borrow-list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'library/borrow_list.html')
+        self.assertEqual(response.context['current_status'], 'all')
+
+    def test_borrow_list_filtering_by_status(self):
+        today = timezone.localdate()
+        # Active loan
+        rec_active = BorrowRecord.objects.create(
+            book=self.book,
+            reader=self.reader,
+            issue_date=today,
+            due_date=today + timedelta(days=10),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+        # Returned loan
+        reader2 = Reader.objects.create(full_name="Reader 2")
+        rec_returned = BorrowRecord.objects.create(
+            book=self.book,
+            reader=reader2,
+            issue_date=today - timedelta(days=20),
+            due_date=today - timedelta(days=6),
+            returned_at=timezone.now(),
+            status=BorrowRecord.STATUS_RETURNED,
+        )
+        # Overdue loan
+        reader3 = Reader.objects.create(full_name="Reader 3")
+        rec_overdue = BorrowRecord.objects.create(
+            book=self.book,
+            reader=reader3,
+            issue_date=today - timedelta(days=25),
+            due_date=today - timedelta(days=5),
+            status=BorrowRecord.STATUS_ACTIVE,
+        )
+
+        # Test active filter
+        res_active = self.client.get(reverse('library:borrow-active'))
+        self.assertEqual(res_active.status_code, 200)
+        active_records = list(res_active.context['borrow_records'])
+        self.assertIn(rec_active, active_records)
+        self.assertIn(rec_overdue, active_records)  # overdue is still active
+        self.assertNotIn(rec_returned, active_records)
+
+        # Test returned filter
+        res_returned = self.client.get(reverse('library:borrow-returned'))
+        self.assertEqual(res_returned.status_code, 200)
+        returned_records = list(res_returned.context['borrow_records'])
+        self.assertIn(rec_returned, returned_records)
+        self.assertNotIn(rec_active, returned_records)
+
+        # Test overdue filter
+        res_overdue = self.client.get(reverse('library:borrow-overdue'))
+        self.assertEqual(res_overdue.status_code, 200)
+        overdue_records = list(res_overdue.context['borrow_records'])
+        self.assertIn(rec_overdue, overdue_records)
+        self.assertNotIn(rec_active, overdue_records)
+        self.assertNotIn(rec_returned, overdue_records)
+
+    def test_borrow_list_search(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        response = self.client.get(reverse('library:borrow-list'), {'q': 'Ada'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['borrow_records']), 1)
+        self.assertEqual(response.context['borrow_records'][0], record)
+
+    def test_borrow_detail_view_get(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        response = self.client.get(reverse('library:borrow-detail', args=[record.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'library/borrow_detail.html')
+        self.assertEqual(response.context['record'], record)
+
+    def test_borrow_issue_view_get(self):
+        response = self.client.get(reverse('library:borrow-issue'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'library/borrow_form.html')
+        self.assertIsInstance(response.context['form'], BorrowIssueForm)
+
+    def test_borrow_issue_view_post_valid(self):
+        due_date = timezone.localdate() + timedelta(days=14)
+        response = self.client.post(reverse('library:borrow-issue'), {
+            'reader': self.reader.pk,
+            'book': self.book.pk,
+            'due_date': due_date.strftime('%Y-%m-%d'),
+        })
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 2)
+        record = BorrowRecord.objects.get(reader=self.reader, book=self.book)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('library:borrow-detail', args=[record.pk]))
+
+    def test_borrow_issue_view_post_unavailable_fails(self):
+        self.book.available_copies = 0
+        self.book.save()
+        due_date = timezone.localdate() + timedelta(days=14)
+        response = self.client.post(reverse('library:borrow-issue'), {
+            'reader': self.reader.pk,
+            'book': self.book.pk,
+            'due_date': due_date.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('book', response.context['form'].errors)
+
+    def test_borrow_issue_view_post_duplicate_active_fails(self):
+        issue_book(book=self.book, reader=self.reader)
+        due_date = timezone.localdate() + timedelta(days=14)
+        response = self.client.post(reverse('library:borrow-issue'), {
+            'reader': self.reader.pk,
+            'book': self.book.pk,
+            'due_date': due_date.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context['form'],
+            'book',
+            f"Reader '{self.reader.full_name}' already has an active loan for '{self.book.title}'."
+        )
+
+    def test_borrow_return_view_get(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        response = self.client.get(reverse('library:borrow-return', args=[record.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'library/borrow_confirm_return.html')
+
+    def test_borrow_return_view_post_successful(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 2)
+
+        response = self.client.post(reverse('library:borrow-return', args=[record.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('library:borrow-detail', args=[record.pk]))
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.available_copies, 3)
+        record.refresh_from_db()
+        self.assertEqual(record.status, BorrowRecord.STATUS_RETURNED)
+
+    def test_borrow_return_view_already_returned_redirects(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        return_book(record.pk)
+
+        # GET on already returned record redirects to detail
+        response_get = self.client.get(reverse('library:borrow-return', args=[record.pk]))
+        self.assertEqual(response_get.status_code, 302)
+        self.assertRedirects(response_get, reverse('library:borrow-detail', args=[record.pk]))
+
+        # POST on already returned record redirects to detail without error
+        response_post = self.client.post(reverse('library:borrow-return', args=[record.pk]))
+        self.assertEqual(response_post.status_code, 302)
+        self.assertRedirects(response_post, reverse('library:borrow-detail', args=[record.pk]))
+

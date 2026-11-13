@@ -13,10 +13,12 @@
             <div class="badge badge-info mb-1">Category Details</div>
             <h1 class="page-title">{{ category.name }}</h1>
         </div>
+        {% if user.is_staff %}
         <div class="header-actions">
             <a href="{% url 'library:category-update' category.pk %}" class="btn btn-secondary">Edit Category</a>
             <a href="{% url 'library:category-delete' category.pk %}" class="btn btn-danger">Delete</a>
         </div>
+        {% endif %}
     </div>
 
     <div class="card detail-card mb-4">
@@ -46,7 +48,9 @@
 
     <div class="section-heading-group">
         <h2 class="section-title">Books in this Category</h2>
+        {% if user.is_staff %}
         <a href="{% url 'library:book-create' %}" class="btn btn-sm btn-outline">+ Add Book</a>
+        {% endif %}
     </div>
 
     {% if books %}
@@ -79,7 +83,9 @@
                         </td>
                         <td class="text-right table-actions">
                             <a href="{% url 'library:book-detail' book.pk %}" class="btn-action btn-action-view">View</a>
+                            {% if user.is_staff %}
                             <a href="{% url 'library:book-update' book.pk %}" class="btn-action btn-action-edit">Edit</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -90,7 +96,9 @@
     {% else %}
     <div class="card empty-card">
         <p class="text-muted mb-2">No books have been assigned to this category yet.</p>
+        {% if user.is_staff %}
         <a href="{% url 'library:book-create' %}" class="btn btn-outline btn-sm">Add a book to {{ category.name }}</a>
+        {% endif %}
     </div>
     {% endif %}
 </div>

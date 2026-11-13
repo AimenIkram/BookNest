@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}403 Forbidden — Access Denied | BookNest{% endblock %}
+{% block topbar_title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="container section-container text-center py-5">
+    <div class="card p-5 max-w-lg mx-auto" style="max-width: 580px; margin: 3rem auto; text-align: center;">
+        <div style="font-size: 3.5rem; margin-bottom: 1rem;">🔒</div>
+        <h1 class="page-title text-danger" style="margin-bottom: 0.5rem;">403 — Access Forbidden</h1>
+        <p class="text-muted" style="margin-bottom: 1.5rem; font-size: 1.05rem;">
+            You do not have the administrative privileges required to access this resource.
+        </p>
+
+        <div class="alert alert-error mb-4 text-left" style="text-align: left;">
+            <p><strong>Security Notice:</strong> Administrative actions such as cataloging books, modifying categories, managing patron records, and issuing or returning loans are restricted to library staff and administrators.</p>
+            {% if exception %}
+            <p class="text-sm mt-1 text-muted">{{ exception }}</p>
+            {% endif %}
+        </div>
+
+        <div class="d-flex justify-center gap-3" style="display: flex; justify-content: center; gap: 1rem;">
+            <a href="{% url 'core:home' %}" class="btn btn-primary">
+                Return to Dashboard
+            </a>
+            <a href="{% url 'library:book-list' %}" class="btn btn-secondary">
+                Browse Books Catalog
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

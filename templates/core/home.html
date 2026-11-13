@@ -1,149 +1,386 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ page_title }} | BookNest{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
 
 {% block content %}
-<section class="hero-section">
-    <div class="container">
-        <div class="hero-badge-wrapper">
-            <span class="badge badge-success">&#x25CF; {{ system_status }}</span>
-            <span class="badge badge-info">{{ current_phase }}</span>
-            <span class="badge badge-phase">Phase 05 Active</span>
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header mb-4">
+        <div>
+            <h1 class="page-title">Library Overview</h1>
+            <p class="page-subtitle">Real-time circulation metrics, collection inventory, and operational alerts.</p>
         </div>
-        <h1 class="hero-title">BookNest Management System</h1>
-        <p class="hero-lead">
-            An enterprise-ready book cataloging and patron management platform powered by Django and MySQL 8.0.
-            Featuring modular domain design, strict database constraints, and complete CRUD workflows.
-        </p>
+        {% if user.is_staff %}
+        <div class="dashboard-actions">
+            <a href="{% url 'library:borrow-issue' %}" class="btn btn-primary">
+                <span>+</span> Issue Book
+            </a>
+            <a href="{% url 'library:book-create' %}" class="btn btn-outline">
+                <span>+</span> Add Book
+            </a>
+        </div>
+        {% endif %}
     </div>
-</section>
 
-<!-- CRUD Management Quick-Access Cards -->
-<section class="modules-section">
-    <div class="container">
-        <div class="section-header-row">
-            <div>
-                <h2 class="section-title mb-1">Library Management Modules</h2>
-                <p class="text-muted">Manage the repository of books, classification categories, and reader patron accounts.</p>
+    <!-- KPI Statistics Grid -->
+    <div class="kpi-grid mb-4">
+        <div class="card kpi-card kpi-primary">
+            <div class="kpi-header">
+                <span class="kpi-label">Total Books</span>
+                <span class="kpi-icon">📖</span>
+            </div>
+            <div class="kpi-value">{{ total_books }}</div>
+            <div class="kpi-footer text-muted text-sm">
+                <span>{{ total_categories }}</span> classification categories
             </div>
         </div>
 
-        <div class="grid modules-grid mt-3">
-            <div class="card module-card">
-                <div class="module-icon">📖</div>
-                <h3 class="card-title">Book Catalog</h3>
-                <p class="card-text">
-                    Browse the complete book collection, monitor available copies, add new catalog titles, and update inventory.
-                </p>
-                <div class="module-actions">
-                    <a href="{% url 'library:book-list' %}" class="btn btn-primary btn-sm">View Books &rarr;</a>
-                    <a href="{% url 'library:book-create' %}" class="btn btn-outline btn-sm">+ Add Book</a>
-                </div>
+        <div class="card kpi-card kpi-info">
+            <div class="kpi-header">
+                <span class="kpi-label">Registered Patrons</span>
+                <span class="kpi-icon">👥</span>
             </div>
-
-            <div class="card module-card">
-                <div class="module-icon">📁</div>
-                <h3 class="card-title">Categories &amp; Genres</h3>
-                <p class="card-text">
-                    Organize titles by genre and literary discipline with protected relational integrity.
-                </p>
-                <div class="module-actions">
-                    <a href="{% url 'library:category-list' %}" class="btn btn-primary btn-sm">View Categories &rarr;</a>
-                    <a href="{% url 'library:category-create' %}" class="btn btn-outline btn-sm">+ Add Category</a>
-                </div>
-            </div>
-
-            <div class="card module-card">
-                <div class="module-icon">👥</div>
-                <h3 class="card-title">Patron Registry</h3>
-                <p class="card-text">
-                    Register library members, manage contact details, and prepare patrons for future circulation workflows.
-                </p>
-                <div class="module-actions">
-                    <a href="{% url 'library:reader-list' %}" class="btn btn-primary btn-sm">View Readers &rarr;</a>
-                    <a href="{% url 'library:reader-create' %}" class="btn btn-outline btn-sm">+ Register Reader</a>
-                </div>
+            <div class="kpi-value">{{ total_readers }}</div>
+            <div class="kpi-footer text-muted text-sm">
+                Active library membership records
             </div>
         </div>
-    </div>
-</section>
 
-<section class="features-section">
-    <div class="container">
-        <h2 class="section-title">Architectural Foundation</h2>
-        <div class="grid cards-grid">
-            <div class="card">
-                <div class="card-icon">📁</div>
-                <h3 class="card-title">Decoupled Configuration</h3>
-                <p class="card-text">
-                    Root orchestration is managed inside <code>config/</code>, keeping environment settings and URL routing completely isolated from application code.
-                </p>
+        <div class="card kpi-card kpi-success">
+            <div class="kpi-header">
+                <span class="kpi-label">Available on Shelves</span>
+                <span class="kpi-icon">📦</span>
             </div>
-            <div class="card">
-                <div class="card-icon">⚡</div>
-                <h3 class="card-title">Complete CRUD Operations</h3>
-                <p class="card-text">
-                    Class-based generic views with form validation, confirmation dialogs, and flash messages.
-                </p>
+            <div class="kpi-value">{{ available_copies }} <span class="kpi-denom">/ {{ total_copies }}</span></div>
+            <div class="kpi-footer text-muted text-sm">
+                <strong>{{ borrowed_copies }}</strong> copies currently borrowed
             </div>
-            <div class="card">
-                <div class="card-icon">🛡️</div>
-                <h3 class="card-title">Relational Data Integrity</h3>
-                <p class="card-text">
-                    Protected deletion policies (`PROTECT`) and database-level `CheckConstraint` on copy balances.
-                </p>
+        </div>
+
+        <div class="card kpi-card {% if overdue_borrows > 0 %}kpi-danger{% else %}kpi-warning{% endif %}">
+            <div class="kpi-header">
+                <span class="kpi-label">Active Loans</span>
+                <span class="kpi-icon">🔄</span>
             </div>
-            <div class="card">
-                <div class="card-icon">🐬</div>
-                <h3 class="card-title">Native MySQL Backend</h3>
-                <p class="card-text">
-                    High-performance `mysqlclient` connection directly configured via decoupled 12-factor environment variables.
-                </p>
+            <div class="kpi-value">{{ active_borrows }}</div>
+            <div class="kpi-footer text-sm">
+                {% if overdue_borrows > 0 %}
+                <span class="text-danger font-medium">⚠️ {{ overdue_borrows }} overdue loan{{ overdue_borrows|pluralize }}</span>
+                {% else %}
+                <span class="text-success font-medium">✓ All active loans on schedule</span>
+                {% endif %}
             </div>
         </div>
     </div>
-</section>
 
-<section class="roadmap-section">
-    <div class="container">
-        <h2 class="section-title">Implementation Progress</h2>
-        <div class="roadmap-tracker">
-            <div class="roadmap-step done">
-                <span class="step-num">01</span>
-                <div class="step-info">
-                    <h4>Environment Audit</h4>
-                    <p>Verified Python 3.13, pip, Git, and database status.</p>
+    <!-- Secondary Metrics Row -->
+    <div class="kpi-subgrid mb-4">
+        <div class="card subkpi-card">
+            <div class="subkpi-content">
+                <div class="subkpi-icon">✅</div>
+                <div>
+                    <div class="subkpi-value">{{ returned_borrows }}</div>
+                    <div class="subkpi-label">Total Returns Completed</div>
                 </div>
             </div>
-            <div class="roadmap-step done">
-                <span class="step-num">02</span>
-                <div class="step-info">
-                    <h4>Project Foundation</h4>
-                    <p>Virtual environment, configuration root, and core app.</p>
+            <a href="{% url 'library:borrow-returned' %}" class="subkpi-link">View Returns &rarr;</a>
+        </div>
+
+        <div class="card subkpi-card">
+            <div class="subkpi-content">
+                <div class="subkpi-icon {% if overdue_borrows > 0 %}icon-danger{% endif %}">⏰</div>
+                <div>
+                    <div class="subkpi-value {% if overdue_borrows > 0 %}text-danger{% endif %}">{{ overdue_borrows }}</div>
+                    <div class="subkpi-label">Overdue Items</div>
                 </div>
             </div>
-            <div class="roadmap-step done">
-                <span class="step-num">03</span>
-                <div class="step-info">
-                    <h4>MySQL Integration</h4>
-                    <p>Connected MySQL 8.0 natively with booknest_user &amp; .env.</p>
+            <a href="{% url 'library:borrow-overdue' %}" class="subkpi-link">View Overdue &rarr;</a>
+        </div>
+
+        <div class="card subkpi-card">
+            <div class="subkpi-content">
+                <div class="subkpi-icon">📊</div>
+                <div style="flex: 1;">
+                    <div class="subkpi-value">{{ inventory_utilization }}%</div>
+                    <div class="subkpi-label">Collection Circulation Rate</div>
+                    <div class="progress-bar-bg mt-1">
+                        <div class="progress-bar-fill" style="width: {{ inventory_utilization }}%;"></div>
+                    </div>
                 </div>
             </div>
-            <div class="roadmap-step done">
-                <span class="step-num">04</span>
-                <div class="step-info">
-                    <h4>Models &amp; Schema</h4>
-                    <p>Designed Category, Book, and Reader with MySQL tables.</p>
+            <span class="text-muted text-sm">{{ borrowed_copies }} of {{ total_copies }} copies on loan</span>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Split Layout -->
+    <div class="dashboard-columns">
+        <!-- Main Column: Activity & Overdue -->
+        <div class="dashboard-main-col">
+            <!-- Recent Circulation Activity -->
+            <div class="card panel-card mb-4">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Recent Borrowing Activity</h2>
+                        <p class="panel-subtitle">Latest book loan and return events.</p>
+                    </div>
+                    <a href="{% url 'library:borrow-list' %}" class="btn btn-outline btn-sm">
+                        View Full History &rarr;
+                    </a>
+                </div>
+
+                {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Patron Reader</th>
+                                <th>Book Title</th>
+                                <th>Issue Date</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_activity %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'library:reader-detail' record.reader.pk %}" class="table-link font-medium">
+                                        {{ record.reader.full_name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'library:book-detail' record.book.pk %}" class="table-link font-medium">
+                                        {{ record.book.title }}
+                                    </a>
+                                </td>
+                                <td class="text-sm">{{ record.issue_date|date:"M d, Y" }}</td>
+                                <td class="text-sm font-medium {% if record.is_overdue %}text-danger{% endif %}">
+                                    {{ record.due_date|date:"M d, Y" }}
+                                </td>
+                                <td>
+                                    {% if record.status == 'RETURNED' %}
+                                        <span class="badge badge-success">Returned</span>
+                                        {% if record.returned_at %}
+                                        <div class="text-xs text-muted" style="margin-top: 0.25rem;">{{ record.returned_at|date:"M d, Y" }}</div>
+                                        {% endif %}
+                                    {% elif record.is_overdue %}
+                                        <span class="badge badge-danger">Overdue</span>
+                                    {% else %}
+                                        <span class="badge badge-info">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right table-actions">
+                                    <a href="{% url 'library:borrow-detail' record.pk %}" class="btn-action btn-action-view" title="Details">View</a>
+                                    {% if user.is_staff and record.status == 'ACTIVE' %}
+                                    <a href="{% url 'library:borrow-return' record.pk %}" class="btn-action btn-action-edit" title="Return">Return</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-panel text-center py-4">
+                    <div class="empty-icon text-muted">📑</div>
+                    <p class="text-muted mt-2">No circulation loans recorded yet.</p>
+                    {% if user.is_staff %}
+                    <a href="{% url 'library:borrow-issue' %}" class="btn btn-primary btn-sm mt-2">+ Issue First Book</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Overdue Attention Panel -->
+            <div class="card panel-card mb-4 {% if overdue_borrows > 0 %}border-danger{% endif %}">
+                <div class="panel-header">
+                    <div class="d-flex align-center gap-2">
+                        <span class="panel-icon-badge {% if overdue_borrows > 0 %}badge-danger-bg{% else %}badge-success-bg{% endif %}">
+                            {% if overdue_borrows > 0 %}⚠️{% else %}✓{% endif %}
+                        </span>
+                        <div>
+                            <h2 class="panel-title">Overdue Items Attention</h2>
+                            <p class="panel-subtitle">Patron loans past their scheduled return date.</p>
+                        </div>
+                    </div>
+                    {% if overdue_borrows > 0 %}
+                    <a href="{% url 'library:borrow-overdue' %}" class="btn btn-outline-danger btn-sm">
+                        View All ({{ overdue_borrows }}) &rarr;
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if overdue_records %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Borrower</th>
+                                <th>Overdue Book</th>
+                                <th>Due Date</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in overdue_records %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'library:reader-detail' record.reader.pk %}" class="table-link font-medium">
+                                        {{ record.reader.full_name }}
+                                    </a>
+                                    <div class="text-muted text-sm">{{ record.reader.email|default:"No email" }}</div>
+                                </td>
+                                <td>
+                                    <a href="{% url 'library:book-detail' record.book.pk %}" class="table-link font-medium">
+                                        {{ record.book.title }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge badge-danger">{{ record.due_date|date:"M d, Y" }}</span>
+                                </td>
+                                <td class="text-right table-actions">
+                                    {% if user.is_staff %}
+                                    <a href="{% url 'library:borrow-return' record.pk %}" class="btn btn-danger btn-sm">
+                                        Return Book
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'library:borrow-detail' record.pk %}" class="btn btn-outline btn-sm">
+                                        View Loan
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="panel-empty-state py-4 text-center">
+                    <span class="text-success font-medium">✓ Excellent! All active library loans are on schedule. No overdue items.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar Column: Quick Actions & Inventory Alerts -->
+        <div class="dashboard-side-col">
+            <!-- Quick Actions Panel -->
+            <div class="card panel-card mb-4">
+                <div class="panel-header">
+                    <h3 class="panel-title">Quick Actions</h3>
+                </div>
+                <div class="quick-actions-list">
+                    {% if user.is_staff %}
+                    <a href="{% url 'library:borrow-issue' %}" class="quick-action-btn primary-action">
+                        <span class="qa-icon">⚡</span>
+                        <div class="qa-content">
+                            <strong>Issue a Book</strong>
+                            <small>Assign available copy to a reader</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'library:book-create' %}" class="quick-action-btn">
+                        <span class="qa-icon">📖</span>
+                        <div class="qa-content">
+                            <strong>Add a Book</strong>
+                            <small>Catalog new title and stock copies</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'library:reader-create' %}" class="quick-action-btn">
+                        <span class="qa-icon">👥</span>
+                        <div class="qa-content">
+                            <strong>Register a Reader</strong>
+                            <small>Create patron membership profile</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'library:category-create' %}" class="quick-action-btn">
+                        <span class="qa-icon">📁</span>
+                        <div class="qa-content">
+                            <strong>Add a Category</strong>
+                            <small>Define new literary classification</small>
+                        </div>
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'library:book-list' %}" class="quick-action-btn">
+                        <span class="qa-icon">🔍</span>
+                        <div class="qa-content">
+                            <strong>Search Catalog</strong>
+                            <small>Filter and browse all library books</small>
+                        </div>
+                    </a>
+                    {% if not user.is_staff %}
+                    <a href="{% url 'library:category-list' %}" class="quick-action-btn">
+                        <span class="qa-icon">📁</span>
+                        <div class="qa-content">
+                            <strong>Browse Categories</strong>
+                            <small>Explore books by genre</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'library:borrow-list' %}" class="quick-action-btn">
+                        <span class="qa-icon">🔄</span>
+                        <div class="qa-content">
+                            <strong>Circulation Records</strong>
+                            <small>View borrowing loan statuses</small>
+                        </div>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
-            <div class="roadmap-step current">
-                <span class="step-num">05</span>
-                <div class="step-info">
-                    <h4>CRUD Operations</h4>
-                    <p>Full Create, Read, Update, and Delete for all entities.</p>
+                            <strong>View All Books</strong>
+                            <small>Search, filter, and manage catalog</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Inventory Overview & Stock Alerts -->
+            <div class="card panel-card mb-4">
+                <div class="panel-header">
+                    <h3 class="panel-title">Inventory Alerts</h3>
+                    <span class="badge badge-secondary text-sm">Low Stock</span>
+                </div>
+                <p class="text-muted text-sm px-3 mb-2">Titles with zero or low remaining copies:</p>
+
+                {% if low_inventory_books %}
+                <ul class="stock-alerts-list">
+                    {% for book in low_inventory_books %}
+                    <li class="stock-alert-item">
+                        <div class="stock-alert-info">
+                            <a href="{% url 'library:book-detail' book.pk %}" class="table-link font-medium">
+                                {{ book.title }}
+                            </a>
+                            <div class="text-muted text-sm">{{ book.category.name }}</div>
+                        </div>
+                        <div>
+                            {% if book.available_copies == 0 %}
+                            <span class="badge badge-danger">Out of Stock</span>
+                            {% else %}
+                            <span class="badge badge-warning">1 left</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-muted text-sm">
+                    ✓ All catalog titles currently have 2 or more copies on shelves.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- System Architecture Card -->
+            <div class="card panel-card system-info-card">
+                <div class="panel-header">
+                    <h4 class="panel-title text-sm">BookNest Management System</h4>
+                </div>
+                <div class="system-info-body text-sm text-muted">
+                    <p class="mb-2"><strong>Architecture:</strong> Decoupled Configuration with domain services and atomic transactions.</p>
+                    <p class="mb-2"><strong>Database Engine:</strong> MySQL 8.0.46 (InnoDB) with row-level locks.</p>
+                    <p class="mb-0"><strong>Circulation:</strong> Real-time Inventory Tracking &amp; Patron Management.</p>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</div>
 {% endblock %}
