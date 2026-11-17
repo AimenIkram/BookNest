@@ -41,7 +41,7 @@
                             {{ category.description|default:"—"|truncatechars:70 }}
                         </td>
                         <td class="text-center">
-                            <span class="badge badge-neutral">{{ category.books.count }}</span>
+                            <span class="badge badge-neutral">{{ category.book_count }}</span>
                         </td>
                         <td class="text-muted text-sm">
                             {{ category.created_at|date:"M d, Y" }}

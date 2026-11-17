@@ -1,0 +1,102 @@
+/* ==========================================================================
+   BookNest — Design Tokens & CSS Custom Properties
+   Theme: Warm, Sophisticated Heritage Library & Boutique Modern Bookstore
+   ========================================================================== */
+
+:root {
+    /* Primary Brand — Deep Espresso & Roasted Coffee */
+    --color-primary: #432C1E;
+    --color-primary-hover: #321F14;
+    --color-primary-active: #23140C;
+    --color-primary-subtle: #EFE7DF;
+
+    /* Secondary — Warm Walnut & Polished Oak */
+    --color-secondary: #7C5335;
+    --color-secondary-hover: #674227;
+    --color-secondary-light: #9B6E4A;
+    --color-secondary-subtle: #F5EEE6;
+
+    /* Accent — Rich Terracotta & Burnt Cinnamon */
+    --color-accent: #C86D3B;
+    --color-accent-hover: #B05B2B;
+    --color-accent-active: #964A20;
+    --color-accent-light: #FDF3EC;
+    --color-accent-subtle: #F6DFD0;
+
+    /* Neutral Backgrounds — Warm Ivory, Crisp Linen, Soft Cream */
+    --color-bg: #F8F5EE;
+    --color-surface: #FFFFFF;
+    --color-surface-card: #FDFBF7;
+    --color-surface-alt: #F2ECE0;
+    --color-surface-hover: #EBE3D3;
+
+    /* Typography Colors — Dark Espresso & Warm Taupe */
+    --color-text-primary: #2B1D16;
+    --color-text-secondary: #5C4D42;
+    --color-text-muted: #88786C;
+    --color-text-subtle: #A8998D;
+    --color-text-inverse: #FAF6F0;
+
+    /* Borders & Structural Dividers — Antique Parchment */
+    --color-border: #E5DCCE;
+    --color-border-subtle: #EFE8DC;
+    --color-border-strong: #D1C4B0;
+
+    /* Semantic Status Colors — Library Muted Palette */
+    --color-success: #2A6C41;
+    --color-success-bg: #EFF8F2;
+    --color-success-border: #C8E8D2;
+    --color-success-text: #1F5332;
+
+    --color-warning: #B35E10;
+    --color-warning-bg: #FEF7EE;
+    --color-warning-border: #FBDCB7;
+    --color-warning-text: #874304;
+
+    --color-danger: #A33434;
+    --color-danger-hover: #8B2525;
+    --color-danger-bg: #FDF3F3;
+    --color-danger-border: #F8CBCB;
+    --color-danger-text: #822222;
+
+    --color-info: #49637A;
+    --color-info-bg: #F1F5F9;
+    --color-info-border: #CFDCE8;
+    --color-info-text: #324759;
+
+    /* Sidebar Shell Design Tokens */
+    --sidebar-bg: #271A12;
+    --sidebar-bg-hover: #37251B;
+    --sidebar-text: #D6CBC1;
+    --sidebar-text-muted: #9E8F82;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-active-bg: #C86D3B;
+    --sidebar-border: #3D2B20;
+    --sidebar-width: 260px;
+    --topbar-height: 4.25rem;
+
+    /* Typography Fonts */
+    --font-serif: 'Playfair Display', 'Lora', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+
+    /* Geometry & Border Radii */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Elevation & Box Shadows (Warm undertones) */
+    --shadow-xs: 0 1px 2px rgba(43, 29, 22, 0.04);
+    --shadow-sm: 0 2px 4px rgba(43, 29, 22, 0.05);
+    --shadow-md: 0 4px 10px rgba(43, 29, 22, 0.07), 0 1px 3px rgba(43, 29, 22, 0.03);
+    --shadow-lg: 0 10px 25px rgba(43, 29, 22, 0.09), 0 3px 8px rgba(43, 29, 22, 0.04);
+    --shadow-xl: 0 20px 38px rgba(43, 29, 22, 0.12), 0 5px 14px rgba(43, 29, 22, 0.05);
+
+    /* Animation Transitions */
+    --transition-fast: 0.15s ease-in-out;
+    --transition-normal: 0.25s ease-in-out;
+    --transition-slow: 0.4s ease-in-out;
+}

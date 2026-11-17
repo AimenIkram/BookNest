@@ -1,0 +1,79 @@
+/* ==========================================================================
+   BookNest — Data Tables & Tabular Records
+   Theme: Warm, Sophisticated Heritage Library & Boutique Modern Bookstore
+   ========================================================================== */
+
+.table-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.885rem;
+    line-height: 1.45;
+}
+
+.table thead {
+    background-color: var(--color-surface-card);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.table th {
+    padding: 0.75rem 1rem;
+    font-size: 0.775rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    color: var(--color-text-primary);
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background-color var(--transition-fast);
+}
+
+.table tbody tr:hover {
+    background-color: #FAF6F0;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Links & Secondary Text in Table Cells */
+.table-link {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.table-link:hover {
+    color: var(--color-accent);
+}
+
+.table-subtext {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.15rem;
+}

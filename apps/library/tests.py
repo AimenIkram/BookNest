@@ -1468,3 +1468,295 @@ class BorrowingViewTests(TestCase):
         self.assertEqual(response_post.status_code, 302)
         self.assertRedirects(response_post, reverse('library:borrow-detail', args=[record.pk]))
 
+
+# ==============================================================================
+# Phase 11 — Quality Assurance, Edge Cases & Error Handling Tests
+# ==============================================================================
+
+class Phase11QualityAssuranceTests(TestCase):
+    """
+    Comprehensive QA suite verifying:
+    - ProtectedError handling across Category, Book, and Reader deletion
+    - Input edge cases (whitespace-only, extreme lengths, invalid formats)
+    - Concurrency and service-level edge cases
+    - Aggregate query optimizations and dashboard sync on issue/return
+    """
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="qa_staff_user",
+            password="password123",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
+
+        self.category = Category.objects.create(
+            name="QA Test Category",
+            description="Testing category."
+        )
+        self.book = Book.objects.create(
+            title="QA Test Book",
+            author="QA Tester",
+            isbn="9780134494166",
+            category=self.category,
+            total_copies=5,
+            available_copies=5,
+        )
+        self.reader = Reader.objects.create(
+            full_name="QA Reader Patron",
+            email="qa.patron@example.com",
+            phone="+1-555-0199",
+        )
+
+    def test_book_delete_with_active_loans_handled_gracefully(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        url = reverse('library:book-delete', args=[self.book.pk])
+
+        # Attempt deletion: should redirect to detail with error message, NOT crash with 500
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('library:book-detail', args=[self.book.pk]))
+
+        # Verify book was NOT deleted
+        self.assertTrue(Book.objects.filter(pk=self.book.pk).exists())
+
+        # Check flash message content
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("circulation loan record" in str(m) for m in messages))
+
+    def test_reader_delete_with_active_loans_handled_gracefully(self):
+        record = issue_book(book=self.book, reader=self.reader)
+        url = reverse('library:reader-delete', args=[self.reader.pk])
+
+        # Attempt deletion: should redirect to detail with error message, NOT crash with 500
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('library:reader-detail', args=[self.reader.pk]))
+
+        # Verify reader was NOT deleted
+        self.assertTrue(Reader.objects.filter(pk=self.reader.pk).exists())
+
+        # Check flash message content
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("circulation loan record" in str(m) for m in messages))
+
+    def test_category_list_renders_annotated_book_count(self):
+        # Create a second category with no books
+        empty_cat = Category.objects.create(name="Empty QA Category")
+
+        response = self.client.get(reverse('library:category-list'))
+        self.assertEqual(response.status_code, 200)
+
+        # Verify book_count is present in the queryset objects
+        categories = list(response.context['categories'])
+        cat_map = {c.name: c.book_count for c in categories}
+        self.assertEqual(cat_map["QA Test Category"], 1)
+        self.assertEqual(cat_map["Empty QA Category"], 0)
+
+        # Verify badge count in rendered HTML
+        self.assertContains(response, '<span class="badge badge-neutral">1</span>')
+        self.assertContains(response, '<span class="badge badge-neutral">0</span>')
+
+    def test_whitespace_only_inputs_rejected(self):
+        # 1. Category name with whitespace only
+        cat_form = CategoryForm(data={'name': '   ', 'description': 'Valid desc'})
+        self.assertFalse(cat_form.is_valid())
+        self.assertIn('name', cat_form.errors)
+
+        # 2. Book title and author with whitespace only
+        book_form = BookForm(data={
+            'title': '   ',
+            'author': '   ',
+            'category': self.category.pk,
+            'total_copies': 1,
+            'available_copies': 1,
+        })
+        self.assertFalse(book_form.is_valid())
+        self.assertIn('title', book_form.errors)
+        self.assertIn('author', book_form.errors)
+
+        # 3. Reader full_name with whitespace only
+        reader_form = ReaderForm(data={'full_name': '   '})
+        self.assertFalse(reader_form.is_valid())
+        self.assertIn('full_name', reader_form.errors)
+
+    def test_invalid_email_formats_rejected(self):
+        invalid_emails = [
+            "notanemail",
+            "@missinguser.com",
+            "missingdomain@",
+            "spaces in@email.com",
+        ]
+        for bad_email in invalid_emails:
+            with self.subTest(email=bad_email):
+                form = ReaderForm(data={
+                    'full_name': 'Valid Reader',
+                    'email': bad_email,
+                })
+                self.assertFalse(form.is_valid())
+                self.assertIn('email', form.errors)
+
+    def test_invalid_phone_formats_rejected(self):
+        invalid_phones = [
+            "123",              # Too short (less than 7 digits)
+            "1234567890123456", # Too long (more than 15 digits)
+            "phone-with-letters",
+            "!!!@@@###$$$",
+        ]
+        for bad_phone in invalid_phones:
+            with self.subTest(phone=bad_phone):
+                form = ReaderForm(data={
+                    'full_name': 'Valid Reader',
+                    'phone': bad_phone,
+                })
+                self.assertFalse(form.is_valid())
+                self.assertIn('phone', form.errors)
+
+    def test_invalid_isbn_formats_rejected(self):
+        invalid_isbns = [
+            "12345678",        # 8 digits (invalid length)
+            "12345678901234",  # 14 digits (invalid length)
+            "978013449416A",   # 13 digits with letter
+            "ISBN-IS-NOT-DIGITS",
+        ]
+        for bad_isbn in invalid_isbns:
+            with self.subTest(isbn=bad_isbn):
+                form = BookForm(data={
+                    'title': 'Test Book',
+                    'author': 'Test Author',
+                    'isbn': bad_isbn,
+                    'category': self.category.pk,
+                    'total_copies': 1,
+                    'available_copies': 1,
+                })
+                self.assertFalse(form.is_valid())
+                self.assertIn('isbn', form.errors)
+
+    def test_future_publication_date_rejected(self):
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        form = BookForm(data={
+            'title': 'Futuristic Book',
+            'author': 'Time Traveler',
+            'category': self.category.pk,
+            'total_copies': 1,
+            'available_copies': 1,
+            'publication_date': tomorrow.strftime('%Y-%m-%d'),
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('publication_date', form.errors)
+        self.assertTrue(any("future" in str(e).lower() for e in form.errors['publication_date']))
+
+    def test_negative_and_out_of_balance_copies_rejected(self):
+        # Negative copies
+        form_neg = BookForm(data={
+            'title': 'Negative Copies',
+            'author': 'Tester',
+            'category': self.category.pk,
+            'total_copies': -2,
+            'available_copies': -1,
+        })
+        self.assertFalse(form_neg.is_valid())
+
+        # Available copies exceeding total copies
+        form_excess = BookForm(data={
+            'title': 'Excess Available',
+            'author': 'Tester',
+            'category': self.category.pk,
+            'total_copies': 3,
+            'available_copies': 5,
+        })
+        self.assertFalse(form_excess.is_valid())
+        self.assertIn('available_copies', form_excess.errors)
+
+    def test_nonexistent_borrow_return_post_returns_404(self):
+        response = self.client.post(reverse('library:borrow-return', args=[999999]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_borrow_issue_past_due_date_rejected(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        form = BorrowIssueForm(data={
+            'reader': self.reader.pk,
+            'book': self.book.pk,
+            'due_date': yesterday.strftime('%Y-%m-%d'),
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('due_date', form.errors)
+        self.assertTrue(any("past" in str(e).lower() for e in form.errors['due_date']))
+
+    def test_dashboard_statistics_update_on_issue_and_return(self):
+        home_url = reverse('core:home')
+
+        # 1. Initial State
+        res1 = self.client.get(home_url)
+        self.assertEqual(res1.context['active_borrows'], 0)
+        self.assertEqual(res1.context['borrowed_copies'], 0)
+        self.assertEqual(res1.context['available_copies'], 5)
+
+        # 2. Issue a copy
+        record = issue_book(book=self.book, reader=self.reader)
+        res2 = self.client.get(home_url)
+        self.assertEqual(res2.context['active_borrows'], 1)
+        self.assertEqual(res2.context['borrowed_copies'], 1)
+        self.assertEqual(res2.context['available_copies'], 4)
+
+        # 3. Return the copy
+        return_book(borrow_record_id=record.pk)
+        res3 = self.client.get(home_url)
+        self.assertEqual(res3.context['active_borrows'], 0)
+        self.assertEqual(res3.context['returned_borrows'], 1)
+        self.assertEqual(res3.context['borrowed_copies'], 0)
+        self.assertEqual(res3.context['available_copies'], 5)
+
+
+class SeedDemoDataCommandTests(TestCase):
+    """
+    Automated test verification for the seed_demo_data management command:
+    ensures proper entity creation, inventory balance, and idempotency.
+    """
+
+    def test_seed_demo_data_creates_records_and_is_idempotent(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from django.db.models import Sum
+
+        out = StringIO()
+        # First execution: populate database
+        call_command("seed_demo_data", stdout=out)
+
+        # Verify entity counts
+        self.assertEqual(Category.objects.count(), 10)
+        self.assertEqual(Book.objects.count(), 40)
+        self.assertEqual(Reader.objects.count(), 20)
+        self.assertEqual(BorrowRecord.objects.count(), 25)
+
+        # Verify borrowing distribution
+        active_loans = BorrowRecord.objects.filter(status=BorrowRecord.STATUS_ACTIVE)
+        self.assertEqual(active_loans.count(), 15)
+        overdue_loans = [r for r in active_loans if r.is_overdue]
+        self.assertEqual(len(overdue_loans), 5)
+        on_time_active_loans = [r for r in active_loans if not r.is_overdue]
+        self.assertEqual(len(on_time_active_loans), 10)
+        returned_loans = BorrowRecord.objects.filter(status=BorrowRecord.STATUS_RETURNED)
+        self.assertEqual(returned_loans.count(), 10)
+
+        # Verify inventory consistency
+        total_copies = Book.objects.aggregate(Sum("total_copies"))["total_copies__sum"]
+        avail_copies = Book.objects.aggregate(Sum("available_copies"))["available_copies__sum"]
+        self.assertEqual(total_copies, 151)
+        self.assertEqual(avail_copies, 136)
+        self.assertEqual(total_copies, avail_copies + active_loans.count())
+
+        # Second execution: verify idempotency
+        out2 = StringIO()
+        call_command("seed_demo_data", stdout=out2)
+
+        # Verify counts remain strictly unchanged
+        self.assertEqual(Category.objects.count(), 10)
+        self.assertEqual(Book.objects.count(), 40)
+        self.assertEqual(Reader.objects.count(), 20)
+        self.assertEqual(BorrowRecord.objects.count(), 25)
+
+        avail_copies_after = Book.objects.aggregate(Sum("available_copies"))["available_copies__sum"]
+        self.assertEqual(avail_copies_after, 136)
+
+
+

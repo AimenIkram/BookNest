@@ -1,0 +1,326 @@
+/* ==========================================================================
+   BookNest — Dashboard Styles (KPIs, Charts, Stock Alerts, Quick Actions)
+   Theme: Warm, Sophisticated Heritage Library & Boutique Modern Bookstore
+   ========================================================================== */
+
+.dashboard-container {
+    width: 100%;
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+}
+
+/* ==========================================================================
+   Primary KPI Metric Cards (Boutique Heritage Elegance)
+   ========================================================================== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.kpi-card {
+    padding: 1rem 1.25rem;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: var(--color-border);
+}
+
+.kpi-primary::before { background-color: var(--color-primary); }
+.kpi-info::before { background-color: var(--color-secondary); }
+.kpi-success::before { background-color: var(--color-success); }
+.kpi-warning::before { background-color: var(--color-warning); }
+.kpi-danger::before { background-color: var(--color-danger); }
+
+.kpi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.kpi-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+}
+
+.kpi-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+    opacity: 0.85;
+}
+
+.kpi-value {
+    font-family: var(--font-serif);
+    font-size: 2.15rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.kpi-denom {
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+.kpi-footer {
+    font-size: 0.825rem;
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: 0.5rem;
+}
+
+/* ==========================================================================
+   Secondary KPI Subgrid
+   ========================================================================== */
+.kpi-subgrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.subkpi-card {
+    padding: 0.95rem 1.15rem;
+    background-color: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.subkpi-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.subkpi-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.subkpi-icon.icon-danger {
+    background-color: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+}
+
+.subkpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.subkpi-label {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.subkpi-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    align-self: flex-start;
+}
+
+.subkpi-link:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+}
+
+/* Progress bar */
+.progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--color-accent);
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+}
+
+/* ==========================================================================
+   Main Dashboard Split Layout
+   ========================================================================== */
+.dashboard-columns {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.75rem;
+    align-items: flex-start;
+}
+
+.dashboard-main-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-side-col {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==========================================================================
+   Quick Actions Panel
+   ========================================================================== */
+.quick-actions-list {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-card);
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.quick-action-btn:hover {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border-strong);
+    transform: translateX(2px);
+}
+
+.quick-action-btn.primary-action {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent-subtle);
+}
+
+.quick-action-btn.primary-action:hover {
+    background-color: #F8E6D8;
+    border-color: var(--color-accent);
+}
+
+.qa-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+}
+
+.qa-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.qa-content strong {
+    font-size: 0.885rem;
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.qa-content small {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Stock Alerts List
+   ========================================================================== */
+.stock-alerts-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.stock-alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    gap: 1rem;
+}
+
+.stock-alert-item:last-child {
+    border-bottom: none;
+}
+
+.stock-alert-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stock-alert-info .table-link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   System Info Card
+   ========================================================================== */
+.system-info-card {
+    background-color: var(--color-surface-card);
+}
+
+.system-info-body {
+    padding: 1.15rem 1.35rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+}

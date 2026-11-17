@@ -1,6 +1,7 @@
 import datetime
 import re
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 def normalize_isbn(value: str) -> str | None:
@@ -82,7 +83,7 @@ def validate_publication_date(value: datetime.date) -> None:
     if not value:
         return
 
-    today = datetime.date.today()
+    today = timezone.localdate()
     if value > today:
         raise ValidationError(
             f"Publication date cannot be in the future (today is {today.strftime('%b %d, %Y')})."

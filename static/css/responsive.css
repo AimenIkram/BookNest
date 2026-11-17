@@ -1,0 +1,247 @@
+/* ==========================================================================
+   BookNest — Responsive Layout & Media Queries
+   Theme: Warm, Sophisticated Heritage Library & Boutique Modern Bookstore
+   ========================================================================== */
+
+/* Mobile Backdrop for Drawer Sidebar */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(39, 26, 18, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Tablet Breakpoints (max-width: 1024px)
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .boltshift-search-input {
+        width: 120px;
+    }
+
+    .boltshift-search-input:focus {
+        width: 180px;
+    }
+
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .kpi-subgrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .filter-actions {
+        grid-column: span 2;
+        justify-content: flex-end;
+    }
+}
+
+/* ==========================================================================
+   Mobile Devices (max-width: 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .app-sidebar {
+        transform: translateX(-100%);
+        width: var(--sidebar-width) !important;
+    }
+
+    .app-sidebar.sidebar-open {
+        transform: translateX(0);
+    }
+
+    .app-sidebar.sidebar-open .brand-card-info,
+    .app-sidebar.sidebar-open .nav-section-title,
+    .app-sidebar.sidebar-open .sidebar-text,
+    .app-sidebar.sidebar-open .sidebar-badge,
+    .app-sidebar.sidebar-open .user-card-details,
+    .app-sidebar.sidebar-open .sidebar-logout-form {
+        opacity: 1 !important;
+        max-width: 200px !important;
+        pointer-events: auto !important;
+    }
+
+    .app-sidebar.sidebar-open .nav-section-title {
+        height: auto !important;
+        padding: 0.85rem 0.75rem 0.35rem !important;
+    }
+
+    .app-sidebar.sidebar-open .sidebar-link {
+        justify-content: flex-start !important;
+        width: 100% !important;
+        padding: 0.625rem 0.75rem !important;
+        margin: 0.25rem 0 !important;
+    }
+
+    .app-sidebar.sidebar-open .sidebar-brand-card,
+    .app-sidebar.sidebar-open .sidebar-user-card {
+        justify-content: flex-start !important;
+        padding: 0.65rem 0.75rem !important;
+    }
+
+    .sidebar-rail-toggle {
+        display: none !important;
+    }
+
+    .app-main,
+    .app-main.is-pinned-main,
+    .app-main.sidebar-collapsed-main {
+        margin-left: 0 !important;
+    }
+
+    .sidebar-toggle-btn {
+        display: flex;
+    }
+
+    .app-topbar {
+        padding: 0 1rem;
+    }
+
+    .app-topbar-wrapper {
+        padding: 0.5rem 0.5rem;
+    }
+
+    .app-topbar {
+        border-radius: 18px;
+        padding: 0.35rem 0.65rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .boltshift-nav {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+        justify-content: space-around;
+        padding: 0.2rem;
+    }
+
+    .boltshift-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .boltshift-user-info {
+        display: none;
+    }
+
+    .boltshift-search-form {
+        display: none;
+    }
+
+    .topbar-divider {
+        display: none;
+    }
+
+    .topbar-actions {
+        display: none;
+    }
+
+    .user-profile-badge .user-display-name {
+        display: none;
+    }
+
+    .page-content-wrapper {
+        padding: 1.25rem 1rem 2.5rem;
+    }
+
+    .section-container {
+        padding: 1.25rem 1rem 2.5rem;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-subgrid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-actions {
+        grid-column: 1;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-card {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .table th, .table td {
+        padding: 0.75rem 0.85rem;
+    }
+
+    .detail-grid,
+    .detail-grid-2col {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-item.full-width {
+        grid-column: span 1;
+    }
+
+    .detail-header {
+        flex-direction: column;
+        padding: 1.25rem 1rem;
+    }
+
+    .detail-card {
+        padding: 1.25rem 1rem;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+}
+
+/* ==========================================================================
+   Small Mobile Viewports (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 1.5rem;
+    }
+
+    .auth-card {
+        padding: 2rem 1.25rem;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .pagination-list {
+        justify-content: center;
+    }
+}

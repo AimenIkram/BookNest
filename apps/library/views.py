@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import ProtectedError, Q
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -30,6 +30,9 @@ class CategoryListView(LoginRequiredMixin, ListView):
     model = Category
     context_object_name = 'categories'
     template_name = 'library/category_list.html'
+
+    def get_queryset(self):
+        return Category.objects.annotate(book_count=Count('books')).order_by('name')
 
 
 class CategoryDetailView(LoginRequiredMixin, DetailView):
@@ -239,9 +242,19 @@ class BookDeleteView(StaffRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         book_title = self.object.title
-        response = super().form_valid(form)
-        messages.success(self.request, f"Book '{book_title}' was deleted successfully.")
-        return response
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, f"Book '{book_title}' was deleted successfully.")
+            return response
+        except ProtectedError:
+            loan_count = self.object.borrow_records.count()
+            messages.error(
+                self.request,
+                f"Cannot delete book '{book_title}' because it has {loan_count} associated "
+                f"circulation loan record{'s' if loan_count != 1 else ''}. "
+                f"Books with borrowing history cannot be removed."
+            )
+            return redirect('library:book-detail', pk=self.object.pk)
 
 
 # ==============================================================================
@@ -284,9 +297,19 @@ class ReaderDeleteView(StaffRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         reader_name = self.object.full_name
-        response = super().form_valid(form)
-        messages.success(self.request, f"Reader '{reader_name}' was removed successfully.")
-        return response
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, f"Reader '{reader_name}' was removed successfully.")
+            return response
+        except ProtectedError:
+            loan_count = self.object.borrow_records.count()
+            messages.error(
+                self.request,
+                f"Cannot delete reader '{reader_name}' because they have {loan_count} associated "
+                f"circulation loan record{'s' if loan_count != 1 else ''}. "
+                f"Patrons with borrowing history cannot be removed."
+            )
+            return redirect('library:reader-detail', pk=self.object.pk)
 
 
 # ==============================================================================
@@ -362,18 +385,23 @@ class BorrowRecordListView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get("q", "").strip()[:100]
         context["search_query"] = search_query
 
-        # Summary tab counts
-        context["count_all"] = BorrowRecord.objects.count()
-        context["count_active"] = BorrowRecord.objects.filter(
-            status=BorrowRecord.STATUS_ACTIVE
-        ).count()
-        context["count_returned"] = BorrowRecord.objects.filter(
-            status=BorrowRecord.STATUS_RETURNED
-        ).count()
-        context["count_overdue"] = BorrowRecord.objects.filter(
-            status=BorrowRecord.STATUS_ACTIVE,
-            due_date__lt=timezone.localdate(),
-        ).count()
+        # Summary tab counts - optimized into single aggregation query
+        counts = BorrowRecord.objects.aggregate(
+            count_all=Count("id"),
+            count_active=Count("id", filter=Q(status=BorrowRecord.STATUS_ACTIVE)),
+            count_returned=Count("id", filter=Q(status=BorrowRecord.STATUS_RETURNED)),
+            count_overdue=Count(
+                "id",
+                filter=Q(
+                    status=BorrowRecord.STATUS_ACTIVE,
+                    due_date__lt=timezone.localdate(),
+                ),
+            ),
+        )
+        context["count_all"] = counts["count_all"] or 0
+        context["count_active"] = counts["count_active"] or 0
+        context["count_returned"] = counts["count_returned"] or 0
+        context["count_overdue"] = counts["count_overdue"] or 0
 
         # Build preserved querystring for pagination
         get_params = self.request.GET.copy()
@@ -448,6 +476,7 @@ class BorrowRecordReturnView(StaffRequiredMixin, View):
         return render(request, "library/borrow_confirm_return.html", {"record": record})
 
     def post(self, request, pk):
+        get_object_or_404(BorrowRecord, pk=pk)
         try:
             record = return_book(borrow_record_id=pk)
             messages.success(

@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
-from django.db.models import Sum
+from django.db.models import Count, Q, Sum
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
@@ -69,17 +69,21 @@ def home_view(request: HttpRequest) -> HttpResponse:
         round((borrowed_copies / total_copies) * 100, 1) if total_copies > 0 else 0
     )
 
-    # 3. Circulation & Loan Statistics
-    active_borrows = BorrowRecord.objects.filter(
-        status=BorrowRecord.STATUS_ACTIVE
-    ).count()
-    returned_borrows = BorrowRecord.objects.filter(
-        status=BorrowRecord.STATUS_RETURNED
-    ).count()
-    overdue_borrows = BorrowRecord.objects.filter(
-        status=BorrowRecord.STATUS_ACTIVE,
-        due_date__lt=today,
-    ).count()
+    # 3. Circulation & Loan Statistics (single aggregated query)
+    loan_totals = BorrowRecord.objects.aggregate(
+        active=Count("id", filter=Q(status=BorrowRecord.STATUS_ACTIVE)),
+        returned=Count("id", filter=Q(status=BorrowRecord.STATUS_RETURNED)),
+        overdue=Count(
+            "id",
+            filter=Q(
+                status=BorrowRecord.STATUS_ACTIVE,
+                due_date__lt=today,
+            ),
+        ),
+    )
+    active_borrows = loan_totals["active"] or 0
+    returned_borrows = loan_totals["returned"] or 0
+    overdue_borrows = loan_totals["overdue"] or 0
 
     # 4. Recent Borrowing Activity (latest 5 issued or returned)
     recent_activity = (
